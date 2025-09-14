@@ -13,22 +13,13 @@ from pydantic.main import BaseModel
 
 CacheValueT = TypeVar('CacheValueT', bound=BaseModel | Any)
 
-def get_serialized_stack_trace():
-    stack_trace = traceback.extract_stack()
-    function_names = [frame[2] for frame in stack_trace[:-2]]  # Exclude the current function
-    serialized_trace = "::".join(function_names)
-    return serialized_trace.replace("<module>::", "").replace("::__wrapper_func__", "")
+def step(_func=None, key_args: set[str] | None = None):
+    # Support usage as @step, @step(), @step({'a'}), or @step(key_args={'a'})
+    if _func is not None and not callable(_func) and key_args is None:
+        key_args = _func
+        _func = None
 
-
-def get_previous_function_name():
-    stack = traceback.extract_stack()
-    traceback_obj = traceback.extract_stack()[-3]  # accounts for wrapper function
-    return traceback_obj.name
-
-
-def step(key_args: set[str] | None):
     def decorator(method):
-       
         sig = inspect.signature(method)  # compute once at decoration time
 
         @wraps(method)
@@ -56,11 +47,11 @@ def step(key_args: set[str] | None):
                     raise Exception(f"Argument '{name}' with value of type {type(value).__name__} is not hashable")
 
             assert isinstance(self, DurableWorkflow)
- 
+
             step_name = method.__name__
             arg_fingerprint = hash(tuple((name, bound.arguments[name]) for name in selected_names))
             invocation_key = f"{step_name}::{arg_fingerprint}"
- 
+
             cached = self.get_step_result(invocation_key)
             if cached is not None:
                 return cached
@@ -73,7 +64,11 @@ def step(key_args: set[str] | None):
             return result
 
         return wrapper
-    return decorator
+
+    if _func is None:
+        return decorator
+    else:
+        return decorator(_func)
 
 class InputRequested(Exception):
     def __init__(self, input_prompt=None, context_id: str | None = None):
@@ -151,7 +146,7 @@ class DurableWorkflow(object):
         return self.get_local_state().status == WorkflowStatus.RUNNING
 
     def is_waiting_for_input(self):
-        return self.state['status'] == WorkflowStatus.WAITING_FOR_INPUT
+        return self.get_local_state().status == WorkflowStatus.WAITING_FOR_INPUT
 
     def get_local_state(self) -> WorkflowStateModel:
         assert self.state_prefix in self.state, f"State has not been initialized properly for {self.state_prefix} state_prefix"
@@ -161,7 +156,7 @@ class DurableWorkflow(object):
         return self.get_local_state().results.get(step_result_key)
 
     def set_step_result(self, step_result_key: str, value: Any):
-        assert value, "step result cannot be None"
+        assert value is not None, "step result cannot be None"
         self.get_local_state().results[step_result_key] = value
 
     def get_inc_attempt(self, key: str, default_val: int = 1) -> int:
@@ -187,7 +182,7 @@ class W1(DurableWorkflow):
 
     @step 
     def test1(self, cache_key=None) -> Any:
-        return ""
+        return "result"
 
 
 if __name__ == '__main__':
