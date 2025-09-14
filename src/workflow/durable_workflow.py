@@ -4,7 +4,7 @@ import hashlib
 import uuid
 from collections import OrderedDict
 import traceback
-from .models import Interaction, InteractionRole, WorkflowStatus, WorkflowState as WorkflowStateModel
+from models import Interaction, InteractionRole, WorkflowStatus, WorkflowState as WorkflowStateModel
 from typing import Callable, get_args, get_origin, Type, TypeVar, Any
 import logging
 logger = logging.getLogger(__name__)
@@ -92,28 +92,10 @@ class DurableWorkflow(object):
             self.state = {self.state_prefix: WorkflowStateModel(name=name)}
 
     def interactions_count(self):
-        return len(self.state['interactions'])
+        return len(self.get_local_state().interactions)
 
-    def get_interactions(self) -> list[dict[str, str]]:
-        return self.state['interactions']
-
-    def get_expected_user_prompts_count(self) -> int:
-        raise NotImplementedError()
-
-    def get_current_user_prompts_count(self) -> int:
-        return len(list(filter(lambda i: 'user' in i, self.get_interactions())))
-
-    """
-    When called in context of request input - step will be already part of the stack trace
-    """
-    def get_invocation_key(self, cache_key=None, step_name=None):
-        state_prefix = object.__getattribute__(self, 'state_prefix')
-        invocation_key = f"{state_prefix}"
-        if step_name:
-            invocation_key += f"::{step_name}"
-        if cache_key:
-            invocation_key += f"::{cache_key}"
-        return invocation_key
+    def get_interactions(self) -> list[Interaction]:
+        return self.get_local_state().interactions
 
     def run(self):
         raise NotImplementedError()
@@ -162,13 +144,11 @@ class DurableWorkflow(object):
         return self.get_local_state().status
 
     def complete_workflow(self):
-        self.state['state_values'][self.state_prefix] = False
-        if not any(self.state['state_values'].values()):
-            self.state['status'] = WorkflowStatus.COMPLETED
+        self.get_local_state().status = WorkflowStatus.COMPLETED
 
     @property
     def is_running(self):
-        return self.state['state_values'][self.state_prefix]
+        return self.get_local_state().status == WorkflowStatus.RUNNING
 
     def is_waiting_for_input(self):
         return self.state['status'] == WorkflowStatus.WAITING_FOR_INPUT
@@ -196,29 +176,24 @@ class DurableWorkflow(object):
 
 
 
-
-class Foo(BaseModel):
-    bar: str
-
-
-class W1(Workflow):
+class W1(DurableWorkflow):
     def __init__(self):
         super().__init__()
         pass
 
     def run(self):
-        print(self.step_test1(cache_key='moo'))
-        print(self.step_test1(cache_key='moo'))
+        print(self.test1(cache_key='foo'))
         self.complete_workflow()
 
-    def step_test1(self, cache_key=None) -> Foo:
-        return Foo(bar='zoo')
+    @step 
+    def test1(self, cache_key=None) -> Any:
+        return ""
 
 
 if __name__ == '__main__':
     w1 = W1()
     w1.run()
-    print(w1.cache)
+    print(w1.state)
 
 
 
