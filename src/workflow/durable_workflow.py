@@ -1,16 +1,17 @@
 import datetime
+from functools import wraps
 import hashlib
 import uuid
 from collections import OrderedDict
 import traceback
-from enum import Enum
-from typing import Optional, List, Callable, get_args, get_origin, Type, TypeVar, Dict, Any, Union
+from .models import WorkflowStatus, WorkflowState as WorkflowStateModel
+from typing import Callable, get_args, get_origin, Type, TypeVar, Any
 import logging
 logger = logging.getLogger(__name__)
 import inspect
 from pydantic.main import BaseModel
 
-CacheValueT = TypeVar('CacheValueT', bound=Union[BaseModel, Any])
+CacheValueT = TypeVar('CacheValueT', bound=BaseModel | Any)
 
 def get_serialized_stack_trace():
     stack_trace = traceback.extract_stack()
@@ -25,54 +26,26 @@ def get_previous_function_name():
     return traceback_obj.name
 
 
-class WorkflowState(str, Enum):
-    RUNNING = "running"
-    WAITING_FOR_INPUT = "waiting_for_input"
-    COMPLETED = "completed"
-
-
 class InputRequested(Exception):
     def __init__(self, input_prompt=None, context_id: str | None = None):
         self.user_prompt = input_prompt
         self.context_id = context_id
 
-
 class DurableWorkflow(object):
-    def __init__(self, name: str | None = None, state_prefix: str | None = None, state: Dict[str, Any] = None):
+    def __init__(self, name: str | None = None, state_prefix: str | None = None, state: dict[str, WorkflowStateModel] | None = None):
         self.state_prefix = f"{type(self).__name__}"
         if state_prefix:
             self.state_prefix += f"::{state_prefix}"
 
         if state:
             self.state = state
-            if 'results' in self.state:
-                self.state['results'] = OrderedDict(self.state['results'])
-            if 'invocation_sequence' not in self.state:
-                self.state['invocation_sequence'] = []
-            if 'interactions' not in self.state:
-                self.state['interactions'] = []
-            if self.state_prefix not in self.state['state_values']:
-                self.state['state_values'][self.state_prefix] = True
-
         else:
-            self.state: Dict[str, Any] = {
-                'name': name,
-                'results': OrderedDict({}),
-                'state': WorkflowState.RUNNING,
-                'step_awaiting_input': None,
-                'user_prompt': None,
-                'interactions': [],
-                'invocation_sequence': [],
-                'models': {},
-                'state_values': {
-                    self.state_prefix: True
-                },
-            }
+            self.state = {self.state_prefix: WorkflowStateModel(name=name)}
 
     def interactions_count(self):
         return len(self.state['interactions'])
 
-    def get_interactions(self) -> List[Dict[str, str]]:
+    def get_interactions(self) -> list[dict[str, str]]:
         return self.state['interactions']
 
     def get_expected_user_prompts_count(self) -> int:
@@ -85,8 +58,8 @@ class DurableWorkflow(object):
     When called in context of request input - step will be already part of the stack trace
     """
     def get_invocation_key(self, cache_key=None, step_name=None):
-        cache_prefix = object.__getattribute__(self, 'cache_prefix')
-        invocation_key = f"{cache_prefix}"
+        state_prefix = object.__getattribute__(self, 'state_prefix')
+        invocation_key = f"{state_prefix}"
         if step_name:
             invocation_key += f"::{step_name}"
         if cache_key:
@@ -107,7 +80,7 @@ class DurableWorkflow(object):
                     logger.debug("  Returning cached result")
                     return self.deserialize_result(attr, self.state['results'][invocation_key]['result'])
 
-                if self.state['state'] == WorkflowState.WAITING_FOR_INPUT:
+                if self.state['status'] == WorkflowStatus.WAITING_FOR_INPUT:
                     last_interaction = self.state['interactions'][-1]
                     raise InputRequested(
                         input_prompt=last_interaction['system'],
@@ -130,157 +103,137 @@ class DurableWorkflow(object):
         else:
             return attr
 
-    @staticmethod
-    def deserialize_result(func: Callable, result: Dict[str, Any]) -> Dict[str, Any] | BaseModel | List[BaseModel | Any]:
-        ret_type = inspect.signature(func).return_annotation
-        if hasattr(ret_type, '__origin__') and get_origin(ret_type) is Optional:
-            ret_type = get_args(ret_type)[0]
-
-        elif hasattr(ret_type, '__origin__') and get_origin(ret_type) is list:
-            internal_type = get_args(ret_type)[0]
-
-            # Process each item in the list if it's a subclass of BaseModel
-            if issubclass(internal_type, BaseModel):
-                return [internal_type.model_validate(item) for item in result]
-
-            return result
-
-        if issubclass(ret_type, BaseModel):
-            return ret_type.model_validate(result)
-        return result
-
-    @staticmethod
-    def serialize_result(result: Any):
-        if isinstance(result, list):
-            # Serialize each BaseModel in the list
-            return [item.model_dump() if isinstance(item, BaseModel) else item for item in result]
-
-        if isinstance(result, BaseModel):
-            return result.model_dump()
-        return result
-
     def run(self):
         raise NotImplementedError()
 
-    def get_last_interaction_context_id(self) -> Optional[str]:
+    def get_last_interaction_context_id(self) -> str | None:
         if self.interactions_count() <= 0:
             return None
         return self.get_interactions()[-1].get('context_id')
 
     def request_input(self, cache_key,
-                      user_prompt=None,
+                      input_prompt=None,
                       mode: str = 'voice',
                       max_duration_sec: int = 5 * 60,
-                      context_id: Optional[str] = None):
+                      context_id: str | None = None):
         assert cache_key, "cache_key must be set for the input request"
-        self.state['state'] = WorkflowState.WAITING_FOR_INPUT
+        self.state['status'] = WorkflowStatus.WAITING_FOR_INPUT
         full_cache_key = self.get_invocation_key(cache_key=cache_key, step_name=get_previous_function_name())
         self.state['step_awaiting_input'] = full_cache_key
-        self.state['user_prompt'] = user_prompt
+        self.state['user_prompt'] = input_prompt
         used_context_id = context_id or str(uuid.uuid4())
         self.state['interactions'].append({
-            'system': user_prompt,
+            'system': input_prompt,
             'cache_key': full_cache_key,
             'timestamp': datetime.datetime.utcnow().isoformat(),
             'mode': mode,
             'max_duration_sec': max_duration_sec,
             'context_id': used_context_id,
             'role': 'system',
-            'content': user_prompt
+            'content': input_prompt
         })
-        raise InputRequested(input_prompt=user_prompt, mode=mode, max_duration_sec=max_duration_sec, context_id=used_context_id)
+        raise InputRequested(input_prompt=input_prompt, mode=mode, max_duration_sec=max_duration_sec, context_id=used_context_id)
 
-    def set_input(self, value, mode: str = 'voice', response_file: Optional[str] = None, context_id: str | None = None):
+    def set_input(self, value: Any, context_id: str | None = None):
         assert self.state['step_awaiting_input'], "No step is awaiting input"
         # if self.get_last_interaction_context_id() != context_id:
         #     raise Exception("Response doesn't correspond to question")
 
         full_cache_key = self.state['step_awaiting_input']
         self.state['results'][full_cache_key] = {'result': value}
-        self.state['state'] = WorkflowState.RUNNING
+        self.state['status'] = WorkflowStatus.RUNNING
         self.state['step_awaiting_input'] = None
         self.state['user_prompt'] = None
         self.state['interactions'].append({
             'user': value,
             'cache_key': full_cache_key,
-            'mode': mode,
-            'response_file': response_file,
             'timestamp': datetime.datetime.utcnow().isoformat(),
             'context_id': context_id,
             'role': 'user',
             'content': value
         })
 
-    def get_state(self):
-        return self.state['state']
+    def get_status(self):
+        return self.state['status']
 
     def complete_workflow(self):
         self.state['state_values'][self.state_prefix] = False
         if not any(self.state['state_values'].values()):
-            self.state['state'] = WorkflowState.COMPLETED
+            self.state['status'] = WorkflowStatus.COMPLETED
 
     @property
     def is_running(self):
         return self.state['state_values'][self.state_prefix]
 
     def is_waiting_for_input(self):
-        return self.state['state'] == WorkflowState.WAITING_FOR_INPUT
+        return self.state['status'] == WorkflowStatus.WAITING_FOR_INPUT
 
-    def get_result_key(self):
-        return f"{self.state_prefix}::workflow_result" if self.state_prefix else "workflow_result"
+    def get_local_state(self) -> WorkflowStateModel:
+        assert self.state_prefix in self.state, f"State has not been initialized properly for {self.state_prefix} state_prefix"
+        return self.state[self.state_prefix]
 
-    def set_result(self, result):
-        self.state[self.get_result_key()] = self.serialize_result(result)
+    def get_step_result(self, step_result_key: str) -> Any | None:
+        return self.get_local_state().results.get(step_result_key)
 
-    def get_result(self):
-        if self.is_running:
-            self.run()
-        return self.state.get(self.get_result_key())
-
-    def get_full_cache_key(self, key: str) -> str:
-        full_key = f'{self.state_prefix}::{key}'
-        return full_key
-
-    def set_cache_value(self, key: str, value: Any) -> None:
-        self.state[self.get_full_cache_key(key)] = self.serialize_result(value)
-
-    def get_cache_value(self, key: str, type_def: Type[CacheValueT]) -> CacheValueT:
-        # Retrieve the serialized value from the cache
-        value = self.state.get(self.get_full_cache_key(key))
-        if value is None:
-            return None
-
-        if issubclass(type_def, BaseModel):
-            parsed_value = type_def.model_validate(value)
-            return parsed_value
-        else:
-            # For primitive types, ensure the value is of the expected type
-            if not isinstance(value, type_def):
-                raise TypeError(f"Expected type {type_def}, but got {type(value)}.")
-            return value
+    def set_step_result(self, step_result_key: str, value: Any):
+        assert value, "step result cannot be None"
+        self.get_local_state().results[step_result_key] = value
 
     def get_inc_attempt(self, key: str, default_val: int = 1) -> int:
         value: int = self.get_cache_value(key, int) or default_val
         self.set_cache_value(key, value + 1)
         return value
 
-    def get_interactions_by_step_and_role(self, step_method: str, role: str, cache_key: str | None):
-        assert step_method in self.__class__.__dict__ and callable(self.__class__.__dict__[step_method]), \
-            f"{step_method} doesn't exist in {self.__class__}"
-
-        invocation_key: str = self.get_invocation_key(cache_key=cache_key, step_name=step_method)
-        interactions: List[Dict[str, str]] = self.get_interactions()
-        ret: List[Dict[str, str]] = []
-        for interaction in interactions:
-            if interaction.get('cache_key') == invocation_key and interaction.get('role') == role:
-                ret.append(interaction)
-
-        return ret
-
     @staticmethod
     def compute_hash(inp):
         sha256_hash = hashlib.sha256(inp.encode()).hexdigest()
         return sha256_hash
+
+
+def step(key_args: set[str] | None):
+    def decorator(method):
+        sig = inspect.signature(method)  # compute once at decoration time
+
+        @wraps(method)
+        def wrapper(self, *args, **kwargs):
+            # Bind arguments to parameter names and include defaults
+            bound = sig.bind(self, *args, **kwargs)
+            bound.apply_defaults()
+
+            # Select which argument names to include in the cache key
+            if key_args is None:
+                selected_names = [name for name in bound.arguments.keys() if name != "self"]
+            else:
+                missing = [name for name in key_args if name not in bound.arguments]
+                if missing:
+                    raise Exception(f"Missing required argument(s) for cache key: {', '.join(missing)}")
+                # Preserve parameter order while filtering to requested names
+                selected_names = [name for name in sig.parameters.keys() if name in key_args and name != "self"]
+
+            # Ensure all selected argument values are hashable
+            for name in selected_names:
+                value = bound.arguments[name]
+                try:
+                    hash(value)
+                except TypeError:
+                    raise Exception(f"Argument '{name}' with value of type {type(value).__name__} is not hashable")
+
+            assert isinstance(self, DurableWorkflow)
+
+            # Compute a deterministic hash based on (name, value) pairs in parameter order
+            step_result_key = hash(tuple((name, bound.arguments[name]) for name in selected_names))
+
+            step_resut = self.get_step_result(step_result_key)
+            if step_resut:
+                return step_resut
+
+            print(f"Step {method.__name__} cache_key={cache_key}")
+            result = method(self, *args, **kwargs)
+            self.set_step_result(step_result_key, result)
+            return result
+
+        return wrapper
+    return decorator
 
 
 class Foo(BaseModel):
