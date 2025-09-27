@@ -14,11 +14,17 @@ __email__ = "your.email@example.com"
 __all__ = [
     "__version__",
     "Workflow",
-    "Task",
-    "Pipeline",
+    "DurableWorkflow",
+    "Foo",
+    "Interaction",
+    "InteractionRole",
+    "WorkflowStatus",
+    "WorkflowState",
 ]
 
-from .core import Workflow, Task, Pipeline
+# from .base_workflow import Workflow, Foo
+# from .durable_workflow import DurableWorkflow
+# from .models import Interaction, InteractionRole, WorkflowStatus, WorkflowState
 
 # Optional: Add convenient imports for common use cases
 # from .decorators import task, workflow

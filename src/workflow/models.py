@@ -11,14 +11,14 @@ from pydantic import BaseModel, Field, field_validator
 class WorkflowStatus(str, Enum):
     RUNNING = "running"
     WAITING_FOR_INPUT = "waiting_for_input"
+    INPUT_SET_BUT_NOT_CONSUMED = "input_set_but_not_consumed"
     COMPLETED = "completed"
+    
 
 
 class WorkflowState(BaseModel):
     name: str | None = None
     status: WorkflowStatus = WorkflowStatus.RUNNING
-    step_awaiting_input: str | None = None
-    step_in_progress: str | None = None
     input_prompt: str | None = None
     results: OrderedDict[str, Any] = Field(default_factory=OrderedDict)
     invocation_sequence: list[str] = Field(default_factory=list)  

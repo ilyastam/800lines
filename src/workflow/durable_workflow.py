@@ -4,7 +4,7 @@ import hashlib
 import uuid
 from collections import OrderedDict
 import traceback
-from models import Interaction, InteractionRole, WorkflowStatus, WorkflowState as WorkflowStateModel
+from .models import Interaction, InteractionRole, WorkflowStatus, WorkflowState as WorkflowStateModel
 from typing import Callable, get_args, get_origin, Type, TypeVar, Any
 import logging
 logger = logging.getLogger(__name__)
@@ -13,8 +13,8 @@ from pydantic.main import BaseModel
 
 CacheValueT = TypeVar('CacheValueT', bound=BaseModel | Any)
 
-def step(_func=None, key_args: set[str] | None = None):
-    # Support usage as @step, @step(), @step({'a'}), or @step(key_args={'a'})
+def cached_step(_func=None, key_args: set[str] | None = None):
+    # Support usage as @cached_step, @cached_step(), @cached_step({'a'}), or @cached_step(key_args={'a'})
     if _func is not None and not callable(_func) and key_args is None:
         key_args = _func
         _func = None
@@ -24,6 +24,8 @@ def step(_func=None, key_args: set[str] | None = None):
 
         @wraps(method)
         def wrapper(self, *args, **kwargs):
+            assert isinstance(self, DurableWorkflow), "cached_step must be used on an instance method of DurableWorkflow"
+
             # Bind arguments to parameter names and include defaults
             bound = sig.bind(self, *args, **kwargs)
             bound.apply_defaults()
@@ -46,21 +48,17 @@ def step(_func=None, key_args: set[str] | None = None):
                 except TypeError:
                     raise Exception(f"Argument '{name}' with value of type {type(value).__name__} is not hashable")
 
-            assert isinstance(self, DurableWorkflow)
+            cached_step_name = method.__name__
+            arg_fingerprint_inputs = tuple((name, bound.arguments[name]) for name in selected_names) 
+            arg_fingerprint = hash(arg_fingerprint_inputs)
+            invocation_key = f"{cached_step_name}::{arg_fingerprint}"
 
-            step_name = method.__name__
-            arg_fingerprint = hash(tuple((name, bound.arguments[name]) for name in selected_names))
-            invocation_key = f"{step_name}::{arg_fingerprint}"
-
-            cached = self.get_step_result(invocation_key)
+            cached = self.get_cached_step_result(invocation_key)
             if cached is not None:
                 return cached
 
-            print(f"Step {step_name} key={invocation_key}")
-            self.get_local_state().step_in_progress = invocation_key
             result = method(self, *args, **kwargs)
-            self.set_step_result(invocation_key, result)
-            self.get_local_state().step_in_progress = None
+            self.set_cached_step_result(invocation_key, result)
             return result
 
         return wrapper
@@ -77,6 +75,7 @@ class InputRequested(Exception):
 
 class DurableWorkflow(object):
     def __init__(self, name: str | None = None, state_prefix: str | None = None, state: dict[str, WorkflowStateModel] | None = None):
+        self.name = name
         self.state_prefix = f"{type(self).__name__}"
         if state_prefix:
             self.state_prefix += f"::{state_prefix}"
@@ -93,17 +92,21 @@ class DurableWorkflow(object):
         return self.get_local_state().interactions
 
     def run(self):
-        raise NotImplementedError()
+        raise NotImplementedError("Please implement the run method - this is like the most important part :)")
 
     def get_last_interaction_context_id(self) -> str | None:
         if self.interactions_count() <= 0:
             return None
         return self.get_interactions()[-1].get('context_id')
 
-
-    @step({'input_key'})
-    def request_input(self, input_prompt: str, input_key: str):
+    def request_input(self, input_prompt: str):
         state: WorkflowStateModel = self.get_local_state()
+
+        if state.status == WorkflowStatus.INPUT_SET_BUT_NOT_CONSUMED:
+            interaction: Interaction = state.interactions[-1]
+            assert interaction.role == InteractionRole.USER
+            state.status = WorkflowStatus.RUNNING
+            return interaction.content
 
         if state.status == WorkflowStatus.WAITING_FOR_INPUT:
             interaction = state.interactions[-1]
@@ -126,38 +129,83 @@ class DurableWorkflow(object):
         state: WorkflowStateModel = self.get_local_state()
         assert state.status == WorkflowStatus.WAITING_FOR_INPUT, "Can't set result when system is not waiting for input"
 
-        self.set_step_result(state.step_in_progress, value)
-        state.status = WorkflowStatus.RUNNING
-        state.step_in_progress = None
+        state.status = WorkflowStatus.INPUT_SET_BUT_NOT_CONSUMED
         state.interactions.append(Interaction(
             timestamp=datetime.datetime.now(datetime.timezone.utc),
             role=InteractionRole.USER,
             content=value
         ))
 
-    def get_status(self):
+    def invocation_key(self) -> str:
+        """
+        Compute a unique, deterministic fingerprint for this invocation by hashing
+        the entire remaining call stack (from the first DurableWorkflow-owned frame
+        down to the bottom). No additional params required.
+
+        Notes:
+        - Using the whole tail of the stack creates a fully unique invocation fingerprint.
+        - We anchor at the first frame whose `self` is a DurableWorkflow (or subclass)
+          to attribute the call to the workflow cached_step context before including all
+          deeper frames in the digest.
+        """
+        stack = inspect.stack()
+        try:
+            # Find the first frame that belongs to a DurableWorkflow instance
+            start_idx = 1
+            func_label = "unknown"
+
+            # Build a canonical representation for all frames from start_idx to the end
+            frames_repr: list[str] = []
+            for fi in stack[1:]:
+                f = fi.frame
+                module = f.f_globals.get("__name__", "")
+                func = fi.function
+                file = fi.filename
+                line = fi.lineno
+                owner = f.f_locals.get("self")
+                cls_name = type(owner).__name__ if isinstance(owner, DurableWorkflow) else ""
+                frames_repr.append(f"{module}:{cls_name}:{func}:{file}:{line}")
+
+            # Fallback if nothing captured (should be rare)
+            if not frames_repr:
+                frames_repr = [f"{fi.function}@{fi.filename}:{fi.lineno}" for fi in stack[1:]]
+
+            serialized = "||".join(frames_repr)
+            digest = hashlib.sha256(serialized.encode("utf-8")).hexdigest()[:16]
+            return f"{self.state_prefix}::{func_label}::{digest}"
+        finally:
+            # Help GC by dropping frame references
+            del stack
+
+    def full_cache_key_for_input(self) -> str:
+        """
+        Backwards-compatible alias for a fully unique invocation fingerprint.
+        """
+        return self.invocation_key()
+
+    def get_status(self) -> WorkflowStatus:
         return self.get_local_state().status
 
     def complete_workflow(self):
         self.get_local_state().status = WorkflowStatus.COMPLETED
 
     @property
-    def is_running(self):
-        return self.get_local_state().status == WorkflowStatus.RUNNING
+    def is_running(self) -> bool:
+        return self.get_local_state().status in {WorkflowStatus.RUNNING,  WorkflowStatus.INPUT_SET_BUT_NOT_CONSUMED}
 
-    def is_waiting_for_input(self):
+    def is_waiting_for_input(self) -> bool:
         return self.get_local_state().status == WorkflowStatus.WAITING_FOR_INPUT
 
     def get_local_state(self) -> WorkflowStateModel:
         assert self.state_prefix in self.state, f"State has not been initialized properly for {self.state_prefix} state_prefix"
         return self.state[self.state_prefix]
 
-    def get_step_result(self, step_result_key: str) -> Any | None:
-        return self.get_local_state().results.get(step_result_key)
+    def get_cached_step_result(self, cached_step_result_key: str) -> Any | None:
+        return self.get_local_state().results.get(cached_step_result_key)
 
-    def set_step_result(self, step_result_key: str, value: Any):
-        assert value is not None, "step result cannot be None"
-        self.get_local_state().results[step_result_key] = value
+    def set_cached_step_result(self, cached_step_result_key: str, value: Any):
+        assert value is not None, "cached_step result cannot be None"
+        self.get_local_state().results[cached_step_result_key] = value
 
     def get_inc_attempt(self, key: str, default_val: int = 1) -> int:
         value: int = self.get_cache_value(key, int) or default_val
@@ -165,7 +213,7 @@ class DurableWorkflow(object):
         return value
 
     @staticmethod
-    def compute_hash(inp):
+    def compute_hash(inp) -> str:
         sha256_hash = hashlib.sha256(inp.encode()).hexdigest()
         return sha256_hash
 
@@ -180,7 +228,7 @@ class W1(DurableWorkflow):
         print(self.test1(cache_key='foo'))
         self.complete_workflow()
 
-    @step 
+    @cached_step 
     def test1(self, cache_key=None) -> Any:
         return "result"
 
