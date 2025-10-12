@@ -218,6 +218,11 @@ class DurableWorkflow(object):
         return sha256_hash
 
 
+"""
+TODO:
+test state injection
+"""
+
 
 class W1(DurableWorkflow):
     def __init__(self):
