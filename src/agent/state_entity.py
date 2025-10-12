@@ -19,11 +19,14 @@ class DefaultStateEntityContext(BaseModel):
      reason_summary: str | None
 
 
-class StateEntity(BaseModel, Generic[ContentType, CntxType]):
+class BaseStateEntity(BaseModel, Generic[ContentType, CntxType]):
+     content: ContentType
+     context: CntxType
+
+class LlmParsedStateEntity(BaseModel, Generic[ContentType, CntxType]):
     definition: ClassVar[str]
-    content: ContentType
-    context: CntxType
     date_created_utc: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    embedding: list[float] | None = None
 
     @classmethod
     def describe(cls):
@@ -35,29 +38,4 @@ class StateEntity(BaseModel, Generic[ContentType, CntxType]):
                 raise TypeError(f"{cls.__name__} must define a class-level 'definition' attribute")    
 
 
-class Task(StateEntity[str, DefaultStateEntityContext]):
-    definition: ClassVar[str] = """
-        Describes an action that needs to be executed in the future based on the context.
-        Examples: 
-        "Migrate database from crdb to postgres"
-        "Draft a doc for vendor user training"
-        "Send a release email"
 
-        Task can be assigned to zero or more people. 
-    """
-
-    assignees: list[str] = Field(default_factory=list)
-
-
-class Decision(StateEntity[str, DefaultStateEntityContext]): 
-    definition: ClassVar[str] = """
-        Describes a decision that participants of the conversation reached.
-
-        Examples:
-        "Let's punt work on API migration to the next quarter"
-        "Billing API will always run fraud detection model on every payment"
-    """
-
-
-class KbState:
-     pass
