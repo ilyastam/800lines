@@ -1,12 +1,12 @@
-from abc import ABC, abstractmethod
+from agent.state_controller import BaseStateController
 from agent.inputs import BaseInput
 
-class BaseStateController(ABC):
 
-    @abstractmethod
+class KbStateController(BaseStateController):
+    
     def compute_state(self, inpt: BaseInput):
         pass
 
-    @abstractmethod
+    
     def udpate_state(self):
         pass

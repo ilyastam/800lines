@@ -1,0 +1,21 @@
+{
+  "description": "Describes an action that needs to be executed in the future based on the context.\nExamples: \n\"Migrate database from crdb to postgres\"\n\"Draft a doc for vendor user training\"\n\"Send a release email\"\n\nTask can be assigned to zero or more people. ",
+  "properties": {
+    "date_created_utc": {
+      "exclude": true,
+      "format": "date-time",
+      "title": "Date Created Utc",
+      "type": "string"
+    },
+    "assignees": {
+      "description": "One or more individuals assigned to the task",
+      "items": {
+        "type": "string"
+      },
+      "title": "Assignees",
+      "type": "array"
+    }
+  },
+  "title": "Task",
+  "type": "object"
+}
