@@ -60,15 +60,19 @@ class BaseStateController:
         # Store all parsed models
         self.update_state(all_parsed_models)
 
-    def update_state(self, state_models: list[BaseStateEntity]) -> None:
+    def update_state(self, state_models: list[BaseStateEntity]) -> int:
         """
         Store state models in storage.
+        The storage will increment the state version and assign it to all entities.
 
         Args:
             state_models: List of state entities to store
+
+        Returns:
+            The version number assigned to these entities
         """
-        for entity in state_models:
-            self.storage.add(entity)
+        version, entity_ids = self.storage.add_entities(state_models)
+        return version
 
     def find_related(
         self,
