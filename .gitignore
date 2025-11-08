@@ -184,5 +184,7 @@ Desktop.ini
 
 # Pre-commit
 .pre-commit-config.yaml.bak
+CLAUDE.md
+claude_tasks/*
 
 

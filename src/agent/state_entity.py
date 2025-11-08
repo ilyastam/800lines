@@ -20,14 +20,13 @@ class DefaultStateEntityContext(BaseModel):
 
 
 class BaseStateEntity(BaseModel, Generic[ContentType, CntxType]):
-     content: ContentType
-     context: CntxType
-
-class LlmParsedStateEntity(BaseModel, Generic[ContentType]):
-    definition: ClassVar[str]
+    content: ContentType
+    context: CntxType
     date_created_utc: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), json_schema_extra={"exclude": True})
     embedding: list[float] | None = Field(default=None, exclude=True)
-    
+
+
+class LlmParsedStateEntity(BaseStateEntity, Generic[ContentType]):
 
     #TODO : make this more abstract 
     @classmethod
@@ -42,20 +41,7 @@ class LlmParsedStateEntity(BaseModel, Generic[ContentType]):
             schema["required"].remove("embedding")
         return schema
 
-    @classmethod
-    def describe(cls):
-        return cls.definition
     
-    def __init_subclass__(cls, **kwargs):
-            super().__init_subclass__(**kwargs)
-            # Skip the check for Pydantic's internally generated generic submodels
-            # These are created when using Generic[T] syntax and have special names
-            if hasattr(cls, "__pydantic_generic_metadata__") or "LlmParsedStateEntity[" in cls.__name__:
-                return
-            # Check if 'definition' is actually defined in the subclass's __dict__
-            # (not just inherited or annotated without a value)
-            if "definition" not in cls.__dict__ or cls.__dict__.get("definition") is None:
-                raise TypeError(f"{cls.__name__} must define a class-level 'definition' attribute")
 
 
 

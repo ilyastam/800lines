@@ -1,6 +1,8 @@
 from typing import Annotated
 from pydantic import BaseModel
 
+from agent.state_entity import BaseStateEntity
+
 # marker
 class ExtractsTo:
     def __init__(self, *entities): 
@@ -19,8 +21,8 @@ class BaseInput(BaseModel):
 
     # returns state entities this input model can extract to. 
     @classmethod
-    def get_extracts_mapping(cls) -> dict[str, list[type[BaseModel]]]:
-        mapping: dict[str, list[type[BaseModel]]] = {}
+    def get_extracts_mapping(cls) -> dict[str, list[type[BaseStateEntity]]]:
+        mapping: dict[str, list[type[BaseStateEntity]]] = {}
         for name, f in cls.model_fields.items():
             for m in f.metadata:
                 if isinstance(m, ExtractsTo):
