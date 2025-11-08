@@ -26,7 +26,7 @@ class BaseStateEntity(BaseModel, Generic[ContentType, CntxType]):
     embedding: list[float] | None = Field(default=None, exclude=True)
 
 
-class LlmParsedStateEntity(BaseStateEntity, Generic[ContentType]):
+class LlmParsedStateEntity(BaseStateEntity[ContentType, CntxType], Generic[ContentType, CntxType]):
 
     #TODO : make this more abstract 
     @classmethod
