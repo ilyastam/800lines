@@ -9,6 +9,7 @@ import numpy as np
 
 from agent.state_storage.embedding_service import EmbeddingService
 from agent.state_storage.similarity_metrics import cosine_similarity
+from agent.state_storage.state_change import StateChange, compare_entities
 from agent.state_entity import BaseStateEntity
 
 
@@ -16,7 +17,7 @@ class StateStorage(ABC):
     """Abstract base class for state storage implementations."""
 
     @abstractmethod
-    def add_entities(self, entities: list[BaseStateEntity]) -> tuple[int, list[str]]:
+    def add_entities(self, entities: list[BaseStateEntity]) -> list[StateChange]:
         """
         Add multiple entities in a single state update.
         Increments the state version and assigns it to all entities.
@@ -25,7 +26,7 @@ class StateStorage(ABC):
             entities: List of state entities to add
 
         Returns:
-            Tuple of (version_number, list of entity IDs)
+            List of StateChange objects representing changes made
         """
         pass
 
@@ -250,7 +251,7 @@ class InMemoryStateStorage(StateStorage):
         """
         return self.entity_versions.get(entity_id)
 
-    def add_entities(self, entities: list[BaseStateEntity]) -> tuple[int, list[str]]:
+    def add_entities(self, entities: list[BaseStateEntity]) -> list[StateChange]:
         """
         Add multiple entities in a single state update.
         Increments the state version and assigns it to all entities.
@@ -259,18 +260,29 @@ class InMemoryStateStorage(StateStorage):
             entities: List of state entities to add
 
         Returns:
-            Tuple of (version_number, list of entity IDs)
+            List of StateChange objects representing changes made
         """
         # First, increment the version (happens before adding any entities)
         version = self.increment_version()
 
-        # Then add all entities with this version
-        entity_ids = []
-        for entity in entities:
-            entity_id = self._add_single(entity, version)
-            entity_ids.append(entity_id)
+        # Track state changes
+        state_changes: list[StateChange] = []
 
-        return version, entity_ids
+        # Then add all entities with this version
+        for entity in entities:
+            # For InMemoryStateStorage, all entities are treated as new
+            # since we don't have a concept of "updating" existing entities
+            # Context ref is the entity's class
+            context_ref = type(entity).__name__
+
+            state_change = compare_entities(None, entity, context_ref)
+            if state_change:
+                state_changes.append(state_change)
+
+            # Add the entity
+            self._add_single(entity, version)
+
+        return state_changes
 
     def _add_single(self, entity: BaseStateEntity, version: int) -> str:
         """

@@ -26,9 +26,9 @@ class DesiredLocationEntity(LlmParsedStateEntity[DesiredLocation]):
     pass
 
 
-class BoatSpecEntity(LlmParsedStateEntity(BaseModel)):
+class BoatSpecEntity(LlmParsedStateEntity[BoatSpec]):
     pass
 
 
-class DatesAndDurationEntity(LlmParsedStateEntity(DatesAndDuration)):
+class DatesAndDurationEntity(LlmParsedStateEntity[DatesAndDuration]):
     pass

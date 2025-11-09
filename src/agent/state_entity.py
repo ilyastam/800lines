@@ -7,7 +7,7 @@ ContentType = TypeVar("ContentType")
 
 class BaseStateEntity(BaseModel, Generic[ContentType]):
     content: ContentType
-    date_created_utc: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), json_schema_extra={"exclude": True})
+    date_created_utc: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), exclude=True)
     embedding: list[float] | None = Field(default=None, exclude=True)
 
 

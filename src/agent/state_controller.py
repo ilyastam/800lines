@@ -7,6 +7,7 @@ from agent.state_storage import (
     InMemoryStateStorage,
     StateStorage,
 )
+from agent.state_storage.state_change import StateChange
 
 
 class BaseStateController:
@@ -27,7 +28,7 @@ class BaseStateController:
             embedding_service=self.embedding_service
         )
 
-    def compute_state(self, input: BaseInput):
+    def compute_state(self, input: BaseInput) -> list[StateChange]:
         """
         Compute and store state from input.
 
@@ -58,9 +59,9 @@ class BaseStateController:
             all_parsed_models.extend(parsed_models)
 
         # Store all parsed models
-        self.update_state(all_parsed_models)
+        return self.update_state(all_parsed_models)
 
-    def update_state(self, state_models: list[BaseStateEntity]) -> int:
+    def update_state(self, state_models: list[BaseStateEntity]) -> list[StateChange]:
         """
         Store state models in storage.
         The storage will increment the state version and assign it to all entities.
@@ -69,10 +70,10 @@ class BaseStateController:
             state_models: List of state entities to store
 
         Returns:
-            The version number assigned to these entities
+            List of StateChange objects representing changes made
         """
-        version, entity_ids = self.storage.add_entities(state_models)
-        return version
+        state_changes = self.storage.add_entities(state_models)
+        return state_changes
 
     def find_related(
         self,

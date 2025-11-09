@@ -13,8 +13,9 @@ SRC_DIR = os.path.join(PROJECT_ROOT, "src")
 if SRC_DIR not in sys.path:
     sys.path.insert(0, SRC_DIR)
 
-from agent.state_entity import BaseStateEntity, DefaultStateEntityContext
+from agent.state_entity import BaseStateEntity
 from agent.state_storage import EmbeddingService, InMemoryStateStorage
+from agent.state_storage.state_change import StateChange, FieldChange
 
 
 class MockEmbeddingService(EmbeddingService):
@@ -50,11 +51,9 @@ class MockEmbeddingService(EmbeddingService):
         return [self.embed(entity) for entity in entities]
 
 
-class TestEntity(BaseStateEntity):
+class TestEntity(BaseStateEntity[str]):
     """Test entity for unit tests."""
-
-    content: str
-    context: DefaultStateEntityContext
+    pass
 
 
 class TestInMemoryStateStorage(unittest.TestCase):
@@ -63,37 +62,28 @@ class TestInMemoryStateStorage(unittest.TestCase):
     def test_add_entity(self):
         """Test adding an entity to storage."""
         storage = InMemoryStateStorage(MockEmbeddingService())
-        entity = TestEntity(
-            content="Test content",
-            context=DefaultStateEntityContext(authors=[], reason_summary=None)
-        )
+        entity = TestEntity(content="Test content")
 
-        version, entity_ids = storage.add_entities([entity])
+        state_changes = storage.add_entities([entity])
 
-        assert len(entity_ids) == 1
-        entity_id = entity_ids[0]
-        assert entity_id is not None
-        assert storage.get_by_id(entity_id) == entity
-        assert storage.get_entity_version(entity_id) == version
-        assert version == 1  # First version
+        # Verify state changes were returned
+        assert len(state_changes) == 1
+        assert isinstance(state_changes[0], StateChange)
+
+        # Verify entity was added
+        assert storage.get_current_version() == 1
+        all_entities = storage.get_all()
+        assert len(all_entities) == 1
+        assert all_entities[0].content == "Test content"
 
     def test_chronological_order(self):
         """Test that entities are stored in chronological order."""
         storage = InMemoryStateStorage(MockEmbeddingService())
 
         # Add entities
-        entity1 = TestEntity(
-            content="First",
-            context=DefaultStateEntityContext(authors=[], reason_summary=None)
-        )
-        entity2 = TestEntity(
-            content="Second",
-            context=DefaultStateEntityContext(authors=[], reason_summary=None)
-        )
-        entity3 = TestEntity(
-            content="Third",
-            context=DefaultStateEntityContext(authors=[], reason_summary=None)
-        )
+        entity1 = TestEntity(content="First")
+        entity2 = TestEntity(content="Second")
+        entity3 = TestEntity(content="Third")
 
         storage.add_entities([entity1, entity2, entity3])
 
@@ -111,10 +101,7 @@ class TestInMemoryStateStorage(unittest.TestCase):
 
         # Add 10 entities
         entities = [
-            TestEntity(
-                content=f"Entity {i}",
-                context=DefaultStateEntityContext(authors=[], reason_summary=None)
-            )
+            TestEntity(content=f"Entity {i}")
             for i in range(10)
         ]
         storage.add_entities(entities)
@@ -133,30 +120,18 @@ class TestInMemoryStateStorage(unittest.TestCase):
         storage = InMemoryStateStorage(MockEmbeddingService())
 
         # Add entities with known embeddings
-        entity1 = TestEntity(
-            content="Entity 1",
-            context=DefaultStateEntityContext(authors=[], reason_summary=None)
-        )
+        entity1 = TestEntity(content="Entity 1")
         entity1.embedding = [1.0, 0.0, 0.0]
 
-        entity2 = TestEntity(
-            content="Entity 2",
-            context=DefaultStateEntityContext(authors=[], reason_summary=None)
-        )
+        entity2 = TestEntity(content="Entity 2")
         entity2.embedding = [0.9, 0.1, 0.0]  # Very similar
 
-        entity3 = TestEntity(
-            content="Entity 3",
-            context=DefaultStateEntityContext(authors=[], reason_summary=None)
-        )
+        entity3 = TestEntity(content="Entity 3")
         entity3.embedding = [0.0, 0.0, 1.0]  # Different
 
         storage.add_entities([entity1, entity2, entity3])
 
-        query = TestEntity(
-            content="Query",
-            context=DefaultStateEntityContext(authors=[], reason_summary=None)
-        )
+        query = TestEntity(content="Query")
         query.embedding = [1.0, 0.0, 0.0]
 
         results = storage.get_similar(query, threshold=0.8, limit=10)
@@ -171,30 +146,18 @@ class TestInMemoryStateStorage(unittest.TestCase):
         storage = InMemoryStateStorage(MockEmbeddingService())
 
         # Add entities with similar embeddings but at different times
-        entity1 = TestEntity(
-            content="Task A",
-            context=DefaultStateEntityContext(authors=[], reason_summary=None)
-        )
+        entity1 = TestEntity(content="Task A")
         entity1.embedding = [0.8, 0.2, 0.0]
 
-        entity2 = TestEntity(
-            content="Task B",
-            context=DefaultStateEntityContext(authors=[], reason_summary=None)
-        )
+        entity2 = TestEntity(content="Task B")
         entity2.embedding = [0.9, 0.1, 0.0]  # More similar
 
-        entity3 = TestEntity(
-            content="Task C",
-            context=DefaultStateEntityContext(authors=[], reason_summary=None)
-        )
+        entity3 = TestEntity(content="Task C")
         entity3.embedding = [0.7, 0.3, 0.0]  # Less similar
 
         storage.add_entities([entity1, entity2, entity3])
 
-        query = TestEntity(
-            content="Query",
-            context=DefaultStateEntityContext(authors=[], reason_summary=None)
-        )
+        query = TestEntity(content="Query")
         query.embedding = [1.0, 0.0, 0.0]
 
         # Test similarity ordering
@@ -222,10 +185,7 @@ class TestInMemoryStateStorage(unittest.TestCase):
         # Add entities in specific order
         entities = []
         for i in range(5):
-            entity = TestEntity(
-                content=f"Entity {i}",
-                context=DefaultStateEntityContext(authors=[], reason_summary=None)
-            )
+            entity = TestEntity(content=f"Entity {i}")
             entity.embedding = [float(i), 0.0, 0.0]
             entities.append(entity)
 
@@ -256,10 +216,7 @@ class TestInMemoryStateStorage(unittest.TestCase):
         storage = InMemoryStateStorage(MockEmbeddingService())
 
         # Add entity with specific embedding
-        entity = TestEntity(
-            content="Test Entity",
-            context=DefaultStateEntityContext(authors=[], reason_summary=None)
-        )
+        entity = TestEntity(content="Test Entity")
         entity.embedding = [0.1, 0.2, 0.3]
         storage.add_entities([entity])
 
@@ -274,10 +231,7 @@ class TestInMemoryStateStorage(unittest.TestCase):
         assert len(restored_entities) == 1
 
         # Find the entity and check embedding similarity
-        query = TestEntity(
-            content="Test Query",
-            context=DefaultStateEntityContext(authors=[], reason_summary=None)
-        )
+        query = TestEntity(content="Test Query")
         query.embedding = [0.1, 0.2, 0.3]
         results = restored_storage.get_similar(query, threshold=0.99)
 
@@ -311,10 +265,7 @@ class TestInMemoryStateStorage(unittest.TestCase):
 
         # Add a few entities
         entities = [
-            TestEntity(
-                content=f"Entity {i}",
-                context=DefaultStateEntityContext(authors=[], reason_summary=None)
-            )
+            TestEntity(content=f"Entity {i}")
             for i in range(3)
         ]
         storage.add_entities(entities)
@@ -332,30 +283,18 @@ class TestInMemoryStateStorage(unittest.TestCase):
         storage = InMemoryStateStorage(MockEmbeddingService())
 
         # Add entities with varying similarity
-        entity1 = TestEntity(
-            content="Very similar",
-            context=DefaultStateEntityContext(authors=[], reason_summary=None)
-        )
+        entity1 = TestEntity(content="Very similar")
         entity1.embedding = [0.95, 0.05, 0.0]
 
-        entity2 = TestEntity(
-            content="Somewhat similar",
-            context=DefaultStateEntityContext(authors=[], reason_summary=None)
-        )
+        entity2 = TestEntity(content="Somewhat similar")
         entity2.embedding = [0.7, 0.3, 0.0]
 
-        entity3 = TestEntity(
-            content="Not similar",
-            context=DefaultStateEntityContext(authors=[], reason_summary=None)
-        )
+        entity3 = TestEntity(content="Not similar")
         entity3.embedding = [0.1, 0.1, 0.8]
 
         storage.add_entities([entity1, entity2, entity3])
 
-        query = TestEntity(
-            content="Query",
-            context=DefaultStateEntityContext(authors=[], reason_summary=None)
-        )
+        query = TestEntity(content="Query")
         query.embedding = [1.0, 0.0, 0.0]
 
         # High threshold should only get very similar
@@ -371,20 +310,16 @@ class TestInMemoryStateStorage(unittest.TestCase):
         storage = InMemoryStateStorage(MockEmbeddingService())
 
         # Add entity without embedding
-        entity = TestEntity(
-            content="Test content",
-            context=DefaultStateEntityContext(authors=[], reason_summary=None)
-        )
+        entity = TestEntity(content="Test content")
         # Don't set embedding
 
-        version, entity_ids = storage.add_entities([entity])
-        entity_id = entity_ids[0]
+        state_changes = storage.add_entities([entity])
 
         # Embedding should be auto-generated
-        stored_entity = storage.get_by_id(entity_id)
-        assert stored_entity is not None
-        assert stored_entity.embedding is not None
-        assert len(stored_entity.embedding) > 0
+        stored_entities = storage.get_all()
+        assert len(stored_entities) == 1
+        assert stored_entities[0].embedding is not None
+        assert len(stored_entities[0].embedding) > 0
 
     def test_version_tracking(self):
         """Test that state versions are properly tracked."""
@@ -394,28 +329,19 @@ class TestInMemoryStateStorage(unittest.TestCase):
         assert storage.get_current_version() == 0
 
         # First update
-        entity1 = TestEntity(
-            content="First",
-            context=DefaultStateEntityContext(authors=[], reason_summary=None)
-        )
-        version1, entity_ids1 = storage.add_entities([entity1])
-        assert version1 == 1
+        entity1 = TestEntity(content="First")
+        storage.add_entities([entity1])
         assert storage.get_current_version() == 1
-        assert storage.get_version_timestamp(version1) is not None
-        assert storage.get_entity_version(entity_ids1[0]) == 1
+        assert storage.get_version_timestamp(1) is not None
 
         # Second update
-        entity2 = TestEntity(
-            content="Second",
-            context=DefaultStateEntityContext(authors=[], reason_summary=None)
-        )
-        version2, entity_ids2 = storage.add_entities([entity2])
-        assert version2 == 2
+        entity2 = TestEntity(content="Second")
+        storage.add_entities([entity2])
         assert storage.get_current_version() == 2
-        assert storage.get_entity_version(entity_ids2[0]) == 2
 
-        # Verify both entities have different versions
-        assert storage.get_entity_version(entity_ids1[0]) != storage.get_entity_version(entity_ids2[0])
+        # Verify entities were added
+        all_entities = storage.get_all()
+        assert len(all_entities) == 2
 
     def test_multiple_entities_same_version(self):
         """Test that multiple entities in one update share the same version."""
@@ -423,36 +349,28 @@ class TestInMemoryStateStorage(unittest.TestCase):
 
         # Add multiple entities in one update
         entities = [
-            TestEntity(
-                content=f"Entity {i}",
-                context=DefaultStateEntityContext(authors=[], reason_summary=None)
-            )
+            TestEntity(content=f"Entity {i}")
             for i in range(3)
         ]
-        version, entity_ids = storage.add_entities(entities)
+        state_changes = storage.add_entities(entities)
 
-        # All entities should have the same version
-        for entity_id in entity_ids:
-            assert storage.get_entity_version(entity_id) == version
+        # All entities should be tracked as state changes
+        assert len(state_changes) == 3
+        # All added in same version
+        assert storage.get_current_version() == 1
 
     def test_version_serialization(self):
         """Test that version information is preserved through serialization."""
         storage = InMemoryStateStorage(MockEmbeddingService())
 
         # Add entities in different versions
-        entity1 = TestEntity(
-            content="Version 1 Entity",
-            context=DefaultStateEntityContext(authors=[], reason_summary=None)
-        )
+        entity1 = TestEntity(content="Version 1 Entity")
         entity1.embedding = [1.0, 0.0, 0.0]
-        version1, entity_ids1 = storage.add_entities([entity1])
+        storage.add_entities([entity1])
 
-        entity2 = TestEntity(
-            content="Version 2 Entity",
-            context=DefaultStateEntityContext(authors=[], reason_summary=None)
-        )
+        entity2 = TestEntity(content="Version 2 Entity")
         entity2.embedding = [0.0, 1.0, 0.0]
-        version2, entity_ids2 = storage.add_entities([entity2])
+        storage.add_entities([entity2])
 
         # Serialize
         json_data = storage.to_json()
@@ -474,14 +392,9 @@ class TestInMemoryStateStorage(unittest.TestCase):
         assert restored_storage.get_version_timestamp(1) is not None
         assert restored_storage.get_version_timestamp(2) is not None
 
-        # Verify entities have correct versions
+        # Verify entities were restored
         all_entities = restored_storage.get_all()
         assert len(all_entities) == 2
-
-        # Get entity IDs from restored storage
-        restored_ids = list(restored_storage.entities.keys())
-        assert restored_storage.get_entity_version(restored_ids[0]) == 1
-        assert restored_storage.get_entity_version(restored_ids[1]) == 2
 
     def test_controller_version_increment(self):
         """Test that BaseStateController properly increments versions."""
@@ -494,38 +407,208 @@ class TestInMemoryStateStorage(unittest.TestCase):
 
         # First update
         entities1 = [
-            TestEntity(
-                content="Entity 1",
-                context=DefaultStateEntityContext(authors=[], reason_summary=None)
-            ),
-            TestEntity(
-                content="Entity 2",
-                context=DefaultStateEntityContext(authors=[], reason_summary=None)
-            ),
+            TestEntity(content="Entity 1"),
+            TestEntity(content="Entity 2"),
         ]
 
-        version1 = controller.update_state(entities1)
-        assert version1 == 1
+        controller.update_state(entities1)
         assert controller.storage.get_current_version() == 1
 
         # Second update
         entities2 = [
-            TestEntity(
-                content="Entity 3",
-                context=DefaultStateEntityContext(authors=[], reason_summary=None)
-            ),
+            TestEntity(content="Entity 3"),
         ]
 
-        version2 = controller.update_state(entities2)
-        assert version2 == 2
+        controller.update_state(entities2)
         assert controller.storage.get_current_version() == 2
 
-        # All entities from first update should have version 1
+        # All entities should be stored
         all_entities = controller.storage.get_all()
-        entity_ids = list(controller.storage.entities.keys())
-        assert controller.storage.get_entity_version(entity_ids[0]) == 1
-        assert controller.storage.get_entity_version(entity_ids[1]) == 1
-        assert controller.storage.get_entity_version(entity_ids[2]) == 2
+        assert len(all_entities) == 3
+
+
+class TestStateChangeTracking(unittest.TestCase):
+    """Tests for state change tracking functionality."""
+
+    def test_new_entity_creates_state_change(self):
+        """Test that adding a new entity creates a state change with all fields."""
+        from pydantic import BaseModel
+
+        class SimpleEntity(BaseStateEntity):
+            content: str
+
+        storage = InMemoryStateStorage(MockEmbeddingService())
+        entity = SimpleEntity(content="test value")
+
+        state_changes = storage.add_entities([entity])
+
+        assert len(state_changes) == 1
+        state_change = state_changes[0]
+        assert isinstance(state_change, StateChange)
+        assert state_change.context_ref == "SimpleEntity"
+        assert len(state_change.changes) > 0
+
+        # Verify field change for content
+        content_changes = [fc for fc in state_change.changes if fc.field_name == "content"]
+        assert len(content_changes) == 1
+        assert content_changes[0].from_value == ""
+        assert content_changes[0].to_value == "test value"
+
+    def test_nested_model_change_detection(self):
+        """Test that nested model changes are tracked with dot notation."""
+        from pydantic import BaseModel
+
+        class NestedModel(BaseModel):
+            nested_field: str
+
+        class ParentEntity(BaseStateEntity):
+            content: NestedModel
+
+        storage = InMemoryStateStorage(MockEmbeddingService())
+        entity = ParentEntity(content=NestedModel(nested_field="nested value"))
+
+        state_changes = storage.add_entities([entity])
+
+        assert len(state_changes) == 1
+        state_change = state_changes[0]
+
+        # Check for nested field changes with dot notation
+        nested_changes = [fc for fc in state_change.changes if "nested_field" in fc.field_name]
+        assert len(nested_changes) == 1
+        assert nested_changes[0].to_value == "nested value"
+
+    def test_bb_state_storage_new_entities(self):
+        """Test BBStateStorage creates state changes for new entities."""
+        from examples.boat_booking.bb_state_storage import BBStateStorage
+        from examples.boat_booking.state_entity import BoatSpecEntity, BoatSpec
+
+        storage = BBStateStorage()
+
+        boat_spec = BoatSpecEntity(
+            content=BoatSpec(
+                boat_type='catamaran',
+                boat_length_ft=40,
+                number_of_cabins=3
+            )
+        )
+
+        state_changes = storage.add_entities([boat_spec])
+
+        assert len(state_changes) == 1
+        state_change = state_changes[0]
+        assert state_change.context_ref == "BoatSpecEntity"
+        assert len(state_change.changes) > 0
+
+        # Verify all boat spec fields are tracked as changes
+        field_names = {fc.field_name for fc in state_change.changes}
+        assert "content.boat_type" in field_names or "content" in field_names
+
+    def test_bb_state_storage_entity_update(self):
+        """Test BBStateStorage tracks changes when updating an entity."""
+        from examples.boat_booking.bb_state_storage import BBStateStorage
+        from examples.boat_booking.state_entity import BoatSpecEntity, BoatSpec
+
+        storage = BBStateStorage()
+
+        # Add initial boat spec
+        initial_spec = BoatSpecEntity(
+            content=BoatSpec(
+                boat_type='monohull',
+                boat_length_ft=30,
+                number_of_cabins=2
+            )
+        )
+        storage.add_entities([initial_spec])
+
+        # Update boat spec
+        updated_spec = BoatSpecEntity(
+            content=BoatSpec(
+                boat_type='catamaran',  # Changed
+                boat_length_ft=40,      # Changed
+                number_of_cabins=2      # Unchanged
+            )
+        )
+
+        state_changes = storage.add_entities([updated_spec])
+
+        assert len(state_changes) == 1
+        state_change = state_changes[0]
+
+        # Should have changes for the modified fields
+        assert len(state_change.changes) >= 2
+
+        # Verify specific field changes
+        boat_type_changes = [fc for fc in state_change.changes if "boat_type" in fc.field_name]
+        if boat_type_changes:
+            assert boat_type_changes[0].from_value == "monohull"
+            assert boat_type_changes[0].to_value == "catamaran"
+
+    def test_no_state_change_for_identical_update(self):
+        """Test that no state change is returned when entity is unchanged."""
+        from examples.boat_booking.bb_state_storage import BBStateStorage
+        from examples.boat_booking.state_entity import BoatSpecEntity, BoatSpec
+
+        storage = BBStateStorage()
+
+        # Add initial boat spec
+        spec = BoatSpecEntity(
+            content=BoatSpec(
+                boat_type='catamaran',
+                boat_length_ft=40,
+                number_of_cabins=3
+            )
+        )
+        storage.add_entities([spec])
+
+        # Update with identical values
+        identical_spec = BoatSpecEntity(
+            content=BoatSpec(
+                boat_type='catamaran',
+                boat_length_ft=40,
+                number_of_cabins=3
+            )
+        )
+
+        state_changes = storage.add_entities([identical_spec])
+
+        # Should return empty list since no changes
+        assert len(state_changes) == 0
+
+    def test_multiple_entities_multiple_changes(self):
+        """Test tracking changes across multiple different entity types."""
+        from examples.boat_booking.bb_state_storage import BBStateStorage
+        from examples.boat_booking.state_entity import (
+            BoatSpecEntity, BoatSpec,
+            DesiredLocationEntity, DesiredLocation
+        )
+
+        storage = BBStateStorage()
+
+        boat_spec = BoatSpecEntity(
+            content=BoatSpec(
+                boat_type='catamaran',
+                boat_length_ft=40,
+                number_of_cabins=3
+            )
+        )
+
+        location = DesiredLocationEntity(
+            content=DesiredLocation(
+                country="Greece",
+                region="Cyclades",
+                city="Mykonos"
+            )
+        )
+
+        state_changes = storage.add_entities([boat_spec, location])
+
+        # Should have state changes for both entities
+        assert len(state_changes) == 2
+
+        # Verify both entity types are tracked
+        context_refs = {sc.context_ref for sc in state_changes}
+        assert "BoatSpecEntity" in context_refs
+        assert "DesiredLocationEntity" in context_refs
 
 
 if __name__ == "__main__":

@@ -143,7 +143,7 @@ class DefaultEmbeddingService(EmbeddingService):
         ]
 
         # Include type-specific fields
-        for field_name in entity.model_fields:
+        for field_name in type(entity).model_fields:
             if field_name not in ['content', 'context', 'embedding', 'date_created_utc']:
                 field_value = getattr(entity, field_name, None)
                 if field_value is not None:

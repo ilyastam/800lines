@@ -2,6 +2,7 @@ from datetime import datetime
 
 from agent.state_entity import BaseStateEntity
 from agent.state_storage import StateStorage, EmbeddingService
+from agent.state_storage.state_change import StateChange, compare_entities
 from examples.boat_booking.state_entity import BoatSpecEntity, DesiredLocationEntity, DatesAndDurationEntity
 
 
@@ -12,15 +13,36 @@ class BBStateStorage(StateStorage):
         self.location: DesiredLocationEntity | None = None
         self.dates_and_duration: DatesAndDurationEntity | None = None
 
-    def add_entities(self, entities: list[BaseStateEntity]) -> None:
+    def add_entities(self, entities: list[BaseStateEntity]) -> list[StateChange]:
+        state_changes: list[StateChange] = []
+
         for entity in entities:
             match entity:
                 case BoatSpecEntity():
+                    # Track previous value and compare
+                    previous = self.boat_spec
+                    state_change = compare_entities(previous, entity, type(entity).__name__)
+                    if state_change:
+                        state_changes.append(state_change)
                     self.boat_spec = entity
+
                 case DesiredLocationEntity():
+                    # Track previous value and compare
+                    previous = self.location
+                    state_change = compare_entities(previous, entity, type(entity).__name__)
+                    if state_change:
+                        state_changes.append(state_change)
                     self.location = entity
+
                 case DatesAndDurationEntity():
+                    # Track previous value and compare
+                    previous = self.dates_and_duration
+                    state_change = compare_entities(previous, entity, type(entity).__name__)
+                    if state_change:
+                        state_changes.append(state_change)
                     self.dates_and_duration = entity
+
+        return state_changes
 
     def get_current_version(self) -> int:
         pass
