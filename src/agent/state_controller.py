@@ -1,5 +1,5 @@
 from agent.inputs import BaseInput
-from agent.llp_parser import parse_state_models_with_llm
+from agent.llm_parser import parse_state_models_with_llm
 from agent.state_entity import BaseStateEntity, LlmParsedStateEntity
 from agent.state_storage import (
     DefaultEmbeddingService,

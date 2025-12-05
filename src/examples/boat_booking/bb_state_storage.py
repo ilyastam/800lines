@@ -64,7 +64,7 @@ class BBStateStorage(StateStorage):
         pass
 
     def get_all(self, chronological: bool = True) -> list[BaseStateEntity]:
-        pass
+        return [self.boat_spec, self.location, self.dates_and_duration]
 
     def get_chronological_range(self, start_index: int = 0, limit: int | None = None) -> list[BaseStateEntity]:
         pass
