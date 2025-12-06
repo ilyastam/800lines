@@ -4,7 +4,7 @@ from abc import ABC, abstractmethod
 
 from agent.state_controller import BaseStateController
 from agent.state_entity import BaseStateEntity
-from agent.state_storage.state_change import StateChange
+from agent.types import StateChange
 from openai import OpenAI
 
 client = OpenAI()

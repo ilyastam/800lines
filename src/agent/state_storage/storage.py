@@ -9,8 +9,9 @@ import numpy as np
 
 from agent.state_storage.embedding_service import EmbeddingService
 from agent.state_storage.similarity_metrics import cosine_similarity
-from agent.state_storage.state_change import StateChange, compare_entities
+from agent.state_storage.state_change import compare_entities
 from agent.state_entity import BaseStateEntity
+from agent.types import StateChange
 
 
 class StateStorage(ABC):

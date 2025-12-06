@@ -4,7 +4,7 @@ from enum import Enum
 from typing import ClassVar, Generic, TypeVar, Any
 from pydantic import BaseModel, Field, model_validator
 
-from agent.state_storage.state_change import compare_entities, StateChange
+from agent.types import StateChange
 
 ContentType = TypeVar("ContentType")
 
@@ -36,7 +36,9 @@ class BaseStateEntity(BaseModel, Generic[ContentType]):
     def is_completed(self):
         return self.is_completable() and self.content.is_completed()
 
+
     def merge(self, update: 'BaseStateEntity', on_validation_error: ValidationErrorHandlingMode = ValidationErrorHandlingMode.skip_merge) -> StateChange | None:
+        from agent.state_storage.state_change import compare_entities
         state_change: StateChange | None = compare_entities(self, update, self.__class__.__name__)
 
         if state_change.validation_errors:

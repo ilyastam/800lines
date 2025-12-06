@@ -7,7 +7,7 @@ from agent.state_storage import (
     InMemoryStateStorage,
     StateStorage,
 )
-from agent.state_storage.state_change import StateChange
+from agent.types import StateChange
 
 
 class BaseStateController:
