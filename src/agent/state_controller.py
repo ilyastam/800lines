@@ -28,6 +28,12 @@ class BaseStateController:
             embedding_service=self.embedding_service
         )
 
+    def is_state_completable(self):
+        return all([entity.is_completable() for entity in self.storage.get_all()])
+
+    def is_state_completed(self):
+        return all([entity.is_completed() for entity in self.storage.get_all()])
+
     def compute_state(self, input: BaseInput) -> list[StateChange]:
         """
         Compute and store state from input.

@@ -10,7 +10,7 @@ client = OpenAI()
 def parse_state_models_with_llm(input_text: str, state_model_classes: list[type[LlmParsedStateEntity]]) -> list[Any] | None:
     COMBINED_STATE_MODELS_SCHEMA = create_model(
         "COMBINED_STATE_MODELS_SCHEMA",
-        parsed_models=(list[Union[tuple(state_model_classes)]] | None, None),
+        parsed_models=(list[Union[tuple(state_model_classes) + (type(None),)]] | None, None),
     )
 
     completion = client.chat.completions.parse(

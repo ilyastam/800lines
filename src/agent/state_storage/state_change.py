@@ -3,6 +3,8 @@ import json
 
 from pydantic import BaseModel, Field
 
+from agent.state_entity import BaseStateEntity
+
 ContextRef = TypeVar("ContextRef")
 
 
@@ -15,6 +17,11 @@ class FieldChange(BaseModel):
 class StateChange(BaseModel, Generic[ContextRef]):
     context_ref: ContextRef
     changes: list[FieldChange] = Field(default_factory=list)
+    validation_errors: list[str] = Field(default_factory=list)
+
+    def clear_changes(self) -> "StateChange[ContextRef]":
+        return self.model_copy(update={"changes": []})
+
 
 
 def _serialize_value(value: Any) -> str:
@@ -81,7 +88,7 @@ def _compare_field_values(field_name: str, old_value: Any, new_value: Any, prefi
     return []
 
 
-def compare_entities(old_entity: BaseModel | None, new_entity: BaseModel, context_ref: Any) -> StateChange | None:
+def compare_entities(old_entity: BaseStateEntity | None, new_entity: BaseStateEntity, context_ref: Any) -> StateChange | None:
     """
     Compare two entities and generate a StateChange object.
 
@@ -123,6 +130,7 @@ def compare_entities(old_entity: BaseModel | None, new_entity: BaseModel, contex
 
     # Only return StateChange if there are actual changes
     if changes:
-        return StateChange(context_ref=context_ref, changes=changes)
-
+        return StateChange(context_ref=context_ref,
+                           changes=changes,
+                           validation_errors=old_entity.validate_before_merge(new_entity))
     return None

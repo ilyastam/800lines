@@ -17,30 +17,18 @@ class BBStateStorage(StateStorage):
         state_changes: list[StateChange] = []
 
         for entity in entities:
+            state_change: StateChange | None = None
+
             match entity:
                 case BoatSpecEntity():
-                    # Track previous value and compare
-                    previous = self.boat_spec
-                    state_change = compare_entities(previous, entity, type(entity).__name__)
-                    if state_change:
-                        state_changes.append(state_change)
-                    self.boat_spec = entity
-
+                    state_change = self.boat_spec.merge(entity)
                 case DesiredLocationEntity():
-                    # Track previous value and compare
-                    previous = self.location
-                    state_change = compare_entities(previous, entity, type(entity).__name__)
-                    if state_change:
-                        state_changes.append(state_change)
-                    self.location = entity
-
+                    state_change = self.location.merge(entity)
                 case DatesAndDurationEntity():
-                    # Track previous value and compare
-                    previous = self.dates_and_duration
-                    state_change = compare_entities(previous, entity, type(entity).__name__)
-                    if state_change:
-                        state_changes.append(state_change)
-                    self.dates_and_duration = entity
+                    state_change = self.dates_and_duration.merge(entity)
+
+            if state_change:
+                state_changes.append(state_change)
 
         return state_changes
 
