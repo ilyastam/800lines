@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from datetime import datetime
 
 from agent.state_entity import BaseStateEntity
@@ -18,14 +20,13 @@ class BBStateStorage(StateStorage):
 
         for entity in entities:
             state_change: StateChange | None = None
-
             match entity:
                 case BoatSpecEntity():
-                    state_change = self.boat_spec.merge(entity)
+                    self.boat_spec, state_change = BoatSpecEntity.merge(self.boat_spec, entity)
                 case DesiredLocationEntity():
-                    state_change = self.location.merge(entity)
+                    self.location, state_change = DesiredLocationEntity.merge(self.location, entity)
                 case DatesAndDurationEntity():
-                    state_change = self.dates_and_duration.merge(entity)
+                    self.dates_and_duration, state_change = DatesAndDurationEntity.merge(self.dates_and_duration, entity)
 
             if state_change:
                 state_changes.append(state_change)

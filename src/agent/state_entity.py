@@ -1,8 +1,10 @@
+from __future__ import annotations
+
 from abc import ABC, abstractmethod
 from datetime import datetime, timezone
 from enum import Enum
-from typing import ClassVar, Generic, TypeVar, Any
-from pydantic import BaseModel, Field, model_validator
+from typing import Generic, TypeVar, Any
+from pydantic import BaseModel, Field
 
 from agent.types import StateChange
 
@@ -36,20 +38,25 @@ class BaseStateEntity(BaseModel, Generic[ContentType]):
     def is_completed(self):
         return self.is_completable() and self.content.is_completed()
 
+    def update_content(self, update: BaseStateEntity) -> BaseStateEntity:
+        self.content = self.content.model_copy(update=update.content.model_dump(exclude_unset=True, exclude_defaults=True))
+        return self
 
-    def merge(self, update: 'BaseStateEntity', on_validation_error: ValidationErrorHandlingMode = ValidationErrorHandlingMode.skip_merge) -> StateChange | None:
+    @classmethod
+    def merge(cls, current: 'BaseStateEntity' | None, update: 'BaseStateEntity', on_validation_error: ValidationErrorHandlingMode = ValidationErrorHandlingMode.skip_merge) -> tuple['BaseStateEntity', StateChange | None]:
         from agent.state_storage.state_change import compare_entities
-        state_change: StateChange | None = compare_entities(self, update, self.__class__.__name__)
+        state_change: StateChange | None = compare_entities(current, update, update.__class__.__name__)
 
         if state_change.validation_errors:
             match on_validation_error:
                 case ValidationErrorHandlingMode.raise_exception:
-                    raise EntityMergeValidationError(f"Can't merge entities {self} and {update} due to validation errors: {state_change.validation_errors}")
+                    raise EntityMergeValidationError(f"Can't merge entities {current} and {update} due to validation errors: {state_change.validation_errors}")
                 case ValidationErrorHandlingMode.skip_merge:
-                    return state_change.clear_changes()
+                    return current, state_change.clear_changes()
+        if current:
+            return current.update_content(update), state_change
 
-        self.model_copy(update=update.model_dump(exclude_unset=True))
-        return state_change
+        return update, state_change
 
     def validate_before_merge(self, update: 'BaseStateEntity') -> list[str]:
         return []
