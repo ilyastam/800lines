@@ -62,7 +62,8 @@ class BaseStateController:
                 input_field_value,
                 llp_parseable_models
             )
-            all_parsed_models.extend(parsed_models)
+            if parsed_models:
+                all_parsed_models.extend(parsed_models)
 
         # Store all parsed models
         return self.update_state(all_parsed_models)

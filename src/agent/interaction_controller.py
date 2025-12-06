@@ -68,7 +68,12 @@ class LlmInteractionsController(BaseInteractionsController):
         
         you are chatting with the person, so strive for balance between casual and professional. 
         Optimize for generating instructions that are first and foremost user-friendly.
+        Be brief with thanks.
         It's okay to not ask for all missing data in one message, we can always ask a follow up question. 
+        Only ask for data that is defined in schemas, and is missing or invalid.
+        
+        If user is asking a question related to the data you have - answer it. If user is asking a question about a general topic - answer it, but 
+        let them know that they need to check facts on their own.
         """)
 
         print(prompt)

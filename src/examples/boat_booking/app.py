@@ -40,4 +40,8 @@ if __name__ == '__main__':
         bb_input = BoatBookingInput(chat_message=message)
 
 
-# TODO: test merging of entities.
+# TODO: work on halucinations {
+#   "country": "USA",
+#   "region": "Split",
+#   "city": "San Francisco"
+# }
