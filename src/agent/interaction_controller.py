@@ -20,6 +20,10 @@ class BaseInteractionsController(ABC):
         pass
 
     @abstractmethod
+    def generate_interaction(self, entity: BaseStateEntity, change: StateChange | None) -> str:
+        pass
+
+    @abstractmethod
     def record_interaction(self, interaction: str):
         pass
 
@@ -36,32 +40,40 @@ class LlmInteractionsController(BaseInteractionsController):
     def record_interaction(self, interaction_object: dict[str, str]):
         self.interactions.append(interaction_object)
 
-    def generate_interactions(self, changes: list[StateChange], ) -> list[str]:
-        if not changes:
-            return []
-
-        for change in changes:
-            interaction = self.generate_interaction(change)
-            if interaction:
-                return [interaction]
-
-        return []
-
-    def generate_interaction(self, change: StateChange) -> str | None:
+    def generate_interactions(self, changes: list[StateChange]) -> list[str]:
         entities: list[BaseStateEntity] = self.get_state_controller().storage.get_all()
 
-        target_entity = None
-        for entity in entities:
-            if entity.__class__.__name__ == change.context_ref:
-                target_entity = entity
-                break
+        incomplete_entities = [
+            entity for entity in entities
+            if entity.is_completable() and not entity.is_completed()
+        ]
 
-        if not target_entity:
-            return None
+        if not incomplete_entities:
+            return []
 
-        entity_json = target_entity.content.model_dump_json(indent=2, exclude_none=True)
-        entity_schema = json.dumps(target_entity.content.model_json_schema(), indent=2)
-        change_json = change.model_dump_json(indent=2, exclude_none=True)
+        changes_by_context_ref = {change.context_ref: change for change in changes}
+
+        interactions = []
+        for entity in incomplete_entities:
+            entity_class_name = entity.__class__.__name__
+            change = changes_by_context_ref.get(entity_class_name)
+            interaction = self.generate_interaction(entity, change)
+            interactions.append(interaction)
+
+        return interactions
+
+    def generate_interaction(self, entity: BaseStateEntity, change: StateChange | None) -> str:
+        entity_json = entity.content.model_dump_json(indent=2, exclude_none=True)
+        entity_schema = json.dumps(entity.content.model_json_schema(), indent=2)
+
+        if change:
+            change_json = change.model_dump_json(indent=2, exclude_none=True)
+            change_context = f"""
+        Last interaction resulted in the following change:
+        {change_json}
+        """
+        else:
+            change_context = ""
 
         prompt = textwrap.dedent(f"""
         Your task is to generate a message to the user such that their
@@ -70,17 +82,14 @@ class LlmInteractionsController(BaseInteractionsController):
 
         So far the following data has been collected:
         {entity_json}
-
-        Last interaction resulted in the following change:
-        {change_json}
-
+        {change_context}
         you are chatting with the person, so strive for balance between casual and professional.
-        Make the message sound natural, acknowledge what user said in their last message, maintain the thread, but 
+        Make the message sound natural, acknowledge what user said in their last message, maintain the thread, but
         advance the conversation to the objective of filling in all entities with expected valid data.
-        
+
         Optimize for generating instructions that are first and foremost user-friendly.
         Be brief with thanks.
-        
+
         It's okay to not ask for all missing data in one message, we can always ask a follow up question.
         Only ask for data that is defined in schemas, and is missing or invalid.
 
@@ -92,9 +101,8 @@ class LlmInteractionsController(BaseInteractionsController):
 
         completion = client.chat.completions.parse(
             model="gpt-4o",
-            messages=self.interactions + [{"role": "system", "content": prompt}]
+            messages=[{"role": "system", "content": prompt}] + self.interactions
         )
 
         interaction = completion.choices[0].message.content
-        self.record_interaction({'role': 'assistant', 'content': interaction})
         return interaction

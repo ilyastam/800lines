@@ -33,7 +33,9 @@ if __name__ == '__main__':
         if state_controller.is_state_completed():
             print("We are done here")
             break
-        interaction = interactions_controller.generate_interactions(changes)[0]
+        interactions = interactions_controller.generate_interactions(changes)
+        interaction = interactions[0]
+        interactions_controller.record_interaction({'role': 'assistant', 'content': interaction})
         wrapped_text = textwrap.fill(str(interaction), width=wrap_width)
         print(wrapped_text)
         message = input(">")
