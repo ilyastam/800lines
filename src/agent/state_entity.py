@@ -47,7 +47,7 @@ class BaseStateEntity(BaseModel, Generic[ContentType]):
         from agent.state_storage.state_change import compare_entities
         state_change: StateChange | None = compare_entities(current, update, update.__class__.__name__)
 
-        if state_change.validation_errors:
+        if state_change and state_change.validation_errors:
             match on_validation_error:
                 case ValidationErrorHandlingMode.raise_exception:
                     raise EntityMergeValidationError(f"Can't merge entities {current} and {update} due to validation errors: {state_change.validation_errors}")

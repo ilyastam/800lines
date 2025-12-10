@@ -15,7 +15,7 @@ if SRC_DIR not in sys.path:
 
 from agent.state_entity import BaseStateEntity
 from agent.state_storage import EmbeddingService, InMemoryStateStorage
-from agent.state_storage.state_change import StateChange, FieldChange
+from agent.types import StateChange, FieldChange
 
 
 class MockEmbeddingService(EmbeddingService):

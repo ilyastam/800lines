@@ -1,5 +1,5 @@
 from typing import Annotated
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from agent.state_entity import BaseStateEntity
 
@@ -18,6 +18,8 @@ class InputField:
 
 # base model with helper
 class BaseInput(BaseModel):
+
+    context: list[dict[str, str]] = Field(default_factory=list)
 
     # returns state entities this input model can extract to. 
     @classmethod

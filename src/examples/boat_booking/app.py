@@ -33,15 +33,16 @@ if __name__ == '__main__':
         if state_controller.is_state_completed():
             print("We are done here")
             break
-        interaction = interactions_controller.generate_interaction(changes)
+        interaction = interactions_controller.generate_interactions(changes)[0]
         wrapped_text = textwrap.fill(str(interaction), width=wrap_width)
         print(wrapped_text)
         message = input(">")
-        bb_input = BoatBookingInput(chat_message=message)
+        bb_input = BoatBookingInput(chat_message=message, context=[
+            {"role": "assistant", "content": str(interaction)},
+        ])
+
+    for model in state_controller.storage.get_all():
+        print(model.model_dump())
 
 
-# TODO: work on halucinations {
-#   "country": "USA",
-#   "region": "Split",
-#   "city": "San Francisco"
-# }
+# TODO: add last assistant message to the entities llm parser input.

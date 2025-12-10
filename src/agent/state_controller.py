@@ -60,7 +60,8 @@ class BaseStateController:
 
             parsed_models = parse_state_models_with_llm(
                 input_field_value,
-                llp_parseable_models
+                llp_parseable_models,
+                context=input.context
             )
             if parsed_models:
                 all_parsed_models.extend(parsed_models)
