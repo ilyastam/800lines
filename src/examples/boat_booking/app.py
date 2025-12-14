@@ -47,4 +47,4 @@ if __name__ == '__main__':
         print(model.model_dump())
 
 
-# TODO: add last assistant message to the entities llm parser input.
+# TODO: support unsetting a field by user message
