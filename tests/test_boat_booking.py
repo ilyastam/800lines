@@ -3,9 +3,12 @@ import textwrap
 import unittest
 
 from agent.interaction_controller import LlmInteractionsController
+from agent.llm_parser import parse_mutation_intent_with_llm
+from agent.types import ModelContext
 from agent.state_controller import BaseStateController
 from examples.boat_booking.bb_state_storage import BBStateStorage
 from examples.boat_booking.input import BoatBookingInput
+from examples.boat_booking.state_entity import BoatSpecEntity
 
 
 class TestBoatBooking(unittest.TestCase):
@@ -35,6 +38,40 @@ class TestBoatBooking(unittest.TestCase):
         changes = state_controller.compute_state(bb_input)
 
         pass
+
+    def test_mutation_intents_set_fields(self):
+        import json
+        message = "I want to book a 40ft catamaran"
+
+        model_ctx = ModelContext(
+            model_class=json.dumps(BoatSpecEntity.model_json_schema()),
+        )
+        intents = parse_mutation_intent_with_llm(
+            input_text=message,
+            model_context=[model_ctx],
+        )
+
+        all_diffs = [d for intent in intents for d in intent.diffs]
+        diffs_by_field = {d.field_name: d.new_value for d in all_diffs}
+        self.assertEqual(diffs_by_field.get('boat_length_ft'), 40)
+        self.assertEqual(diffs_by_field.get('boat_type'), 'catamaran')
+
+    def test_mutation_intents_unset_fields(self):
+        import json
+        message = "Actually no, I've changed my mind about 40ft"
+
+        model_ctx = ModelContext(
+            model_class=json.dumps(BoatSpecEntity.model_json_schema()),
+        )
+        intents = parse_mutation_intent_with_llm(
+            input_text=message,
+            model_context=[model_ctx],
+            prior_interactions=[{'role': 'user', 'content': 'I want to book a 40ft catamaran'}]
+        )
+
+        all_diffs = [d for intent in intents for d in intent.diffs]
+        diffs_by_field = {d.field_name: d.new_value for d in all_diffs}
+        self.assertIsNone(diffs_by_field.get('boat_length_ft'))
 
 
 if __name__ == '__main__':
