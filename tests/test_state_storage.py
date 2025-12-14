@@ -419,7 +419,7 @@ class TestMutationIntentTracking(unittest.TestCase):
             ]
         )
 
-        applied_intents = storage.add_intents([intent])
+        applied_intents = storage.apply_mutation_intents([intent])
 
         assert len(applied_intents) == 1
         applied_intent = applied_intents[0]
@@ -442,7 +442,7 @@ class TestMutationIntentTracking(unittest.TestCase):
                 FieldDiff(field_name='number_of_cabins', new_value=2)
             ]
         )
-        storage.add_intents([initial_intent])
+        storage.apply_mutation_intents([initial_intent])
 
         update_intent = MutationIntent(
             model_class_name='BoatSpecEntity',
@@ -452,7 +452,7 @@ class TestMutationIntentTracking(unittest.TestCase):
             ]
         )
 
-        applied_intents = storage.add_intents([update_intent])
+        applied_intents = storage.apply_mutation_intents([update_intent])
 
         assert len(applied_intents) == 1
         assert applied_intents[0].model_class_name == "BoatSpecEntity"
@@ -480,7 +480,7 @@ class TestMutationIntentTracking(unittest.TestCase):
             ]
         )
 
-        applied_intents = storage.add_intents([boat_intent, location_intent])
+        applied_intents = storage.apply_mutation_intents([boat_intent, location_intent])
 
         assert len(applied_intents) == 2
 

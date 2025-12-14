@@ -17,7 +17,7 @@ class StateStorage(ABC):
     """Abstract base class for state storage implementations."""
 
     @abstractmethod
-    def add_intents(self, intents: list[MutationIntent]) -> list[MutationIntent]:
+    def apply_mutation_intents(self, intents: list[MutationIntent]) -> list[MutationIntent]:
         """
         Apply mutation intents to storage.
 
@@ -250,7 +250,7 @@ class InMemoryStateStorage(StateStorage):
         """
         return self.entity_versions.get(entity_id)
 
-    def add_intents(self, intents: list[MutationIntent]) -> list[MutationIntent]:
+    def apply_mutation_intents(self, intents: list[MutationIntent]) -> list[MutationIntent]:
         """
         Apply mutation intents to storage.
         For InMemoryStateStorage, stores intents as dict-based entities.

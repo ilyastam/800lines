@@ -15,7 +15,7 @@ class BBStateStorage(StateStorage):
         self.location: DesiredLocationEntity | None = None
         self.dates_and_duration: DatesAndDurationEntity | None = None
 
-    def add_intents(self, intents: list[MutationIntent]) -> list[MutationIntent]:
+    def apply_mutation_intents(self, intents: list[MutationIntent]) -> list[MutationIntent]:
         applied_intents: list[MutationIntent] = []
 
         for intent in intents:

@@ -69,7 +69,7 @@ class BaseStateController:
             )
             all_intents.extend(intents)
 
-        return self.storage.add_intents(all_intents)
+        return self.storage.apply_mutation_intents(all_intents)
 
     def update_state(self, state_models: list[BaseStateEntity]) -> list[MutationIntent]:
         """
@@ -83,7 +83,7 @@ class BaseStateController:
             List of MutationIntent objects representing changes made
         """
         intents = self._entities_to_intents(state_models)
-        return self.storage.add_intents(intents)
+        return self.storage.apply_mutation_intents(intents)
 
     def _entities_to_intents(self, entities: list[BaseStateEntity]) -> list[MutationIntent]:
         """Convert entities to MutationIntents."""
