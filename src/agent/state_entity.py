@@ -6,7 +6,7 @@ from enum import Enum
 from typing import Generic, TypeVar, Any
 from pydantic import BaseModel, Field
 
-from agent.types import StateChange
+from agent.types import MutationIntent, FieldDiff
 
 ContentType = TypeVar("ContentType")
 
@@ -38,27 +38,31 @@ class BaseStateEntity(BaseModel, Generic[ContentType]):
     def is_completed(self):
         return self.is_completable() and self.content.is_completed()
 
-    def update_content(self, update: BaseStateEntity) -> BaseStateEntity:
-        self.content = self.content.model_copy(update=update.content.model_dump(exclude_unset=True, exclude_defaults=True))
+    def update_content(self, diffs: list[FieldDiff]) -> 'BaseStateEntity':
+        update_dict = {diff.field_name: diff.new_value for diff in diffs}
+        self.content = self.content.model_copy(update=update_dict)
         return self
 
     @classmethod
-    def merge(cls, current: 'BaseStateEntity' | None, update: 'BaseStateEntity', on_validation_error: ValidationErrorHandlingMode = ValidationErrorHandlingMode.skip_merge) -> tuple['BaseStateEntity', StateChange | None]:
-        from agent.state_storage.state_change import compare_entities
-        state_change: StateChange | None = compare_entities(current, update, update.__class__.__name__)
+    def merge(cls, current: 'BaseStateEntity' | None, intent: MutationIntent, on_validation_error: ValidationErrorHandlingMode = ValidationErrorHandlingMode.skip_merge) -> tuple['BaseStateEntity', MutationIntent]:
+        validation_errors = current.validate_before_merge(intent) if current else []
 
-        if state_change and state_change.validation_errors:
+        if validation_errors:
+            intent_with_errors = intent.model_copy(update={"validation_errors": validation_errors})
             match on_validation_error:
                 case ValidationErrorHandlingMode.raise_exception:
-                    raise EntityMergeValidationError(f"Can't merge entities {current} and {update} due to validation errors: {state_change.validation_errors}")
+                    raise EntityMergeValidationError(f"Can't merge entity {current} with intent {intent} due to validation errors: {validation_errors}")
                 case ValidationErrorHandlingMode.skip_merge:
-                    return current, state_change.clear_changes()
+                    return current, intent_with_errors.model_copy(update={"diffs": []})
+
         if current:
-            return current.update_content(update), state_change
+            return current.update_content(intent.diffs), intent
 
-        return update, state_change
+        update_dict = {diff.field_name: diff.new_value for diff in intent.diffs}
+        new_entity = cls(content=cls.model_fields['content'].annotation(**update_dict))
+        return new_entity, intent
 
-    def validate_before_merge(self, update: 'BaseStateEntity') -> list[str]:
+    def validate_before_merge(self, intent: MutationIntent) -> list[str]:
         return []
 
 

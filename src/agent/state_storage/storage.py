@@ -9,25 +9,23 @@ import numpy as np
 
 from agent.state_storage.embedding_service import EmbeddingService
 from agent.state_storage.similarity_metrics import cosine_similarity
-from agent.state_storage.state_change import compare_entities
 from agent.state_entity import BaseStateEntity
-from agent.types import StateChange
+from agent.types import MutationIntent, FieldDiff
 
 
 class StateStorage(ABC):
     """Abstract base class for state storage implementations."""
 
     @abstractmethod
-    def add_entities(self, entities: list[BaseStateEntity]) -> list[StateChange]:
+    def add_intents(self, intents: list[MutationIntent]) -> list[MutationIntent]:
         """
-        Add multiple entities in a single state update.
-        Increments the state version and assigns it to all entities.
+        Apply mutation intents to storage.
 
         Args:
-            entities: List of state entities to add
+            intents: List of mutation intents to apply
 
         Returns:
-            List of StateChange objects representing changes made
+            List of applied MutationIntent objects
         """
         pass
 
@@ -252,38 +250,55 @@ class InMemoryStateStorage(StateStorage):
         """
         return self.entity_versions.get(entity_id)
 
-    def add_entities(self, entities: list[BaseStateEntity]) -> list[StateChange]:
+    def add_intents(self, intents: list[MutationIntent]) -> list[MutationIntent]:
+        """
+        Apply mutation intents to storage.
+        For InMemoryStateStorage, stores intents as dict-based entities.
+
+        Args:
+            intents: List of mutation intents to apply
+
+        Returns:
+            List of applied MutationIntent objects
+        """
+        version = self.increment_version()
+        applied_intents: list[MutationIntent] = []
+
+        for intent in intents:
+            update_dict = {diff.field_name: diff.new_value for diff in intent.diffs}
+            entity = BaseStateEntity(content=update_dict)
+            self._add_single(entity, version)
+            applied_intents.append(intent)
+
+        return applied_intents
+
+    def add_entities(self, entities: list[BaseStateEntity]) -> list[MutationIntent]:
         """
         Add multiple entities in a single state update.
-        Increments the state version and assigns it to all entities.
+        Converts entities to intents internally.
 
         Args:
             entities: List of state entities to add
 
         Returns:
-            List of StateChange objects representing changes made
+            List of MutationIntent objects representing changes made
         """
-        # First, increment the version (happens before adding any entities)
         version = self.increment_version()
 
-        # Track state changes
-        state_changes: list[StateChange] = []
+        intents: list[MutationIntent] = []
 
-        # Then add all entities with this version
         for entity in entities:
-            # For InMemoryStateStorage, all entities are treated as new
-            # since we don't have a concept of "updating" existing entities
-            # Context ref is the entity's class
-            context_ref = type(entity).__name__
+            content_dict = entity.content.model_dump(exclude_unset=True, exclude_defaults=True)
+            diffs = [FieldDiff(field_name=k, new_value=v) for k, v in content_dict.items()]
+            intent = MutationIntent(
+                model_class_name=type(entity).__name__,
+                diffs=diffs
+            )
+            intents.append(intent)
 
-            state_change = compare_entities(None, entity, context_ref)
-            if state_change:
-                state_changes.append(state_change)
-
-            # Add the entity
             self._add_single(entity, version)
 
-        return state_changes
+        return intents
 
     def _add_single(self, entity: BaseStateEntity, version: int) -> str:
         """

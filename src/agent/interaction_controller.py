@@ -4,7 +4,7 @@ from abc import ABC, abstractmethod
 
 from agent.state_controller import BaseStateController
 from agent.state_entity import BaseStateEntity
-from agent.types import StateChange
+from agent.types import MutationIntent
 from openai import OpenAI
 
 client = OpenAI()
@@ -16,11 +16,11 @@ class BaseInteractionsController(ABC):
         pass
 
     @abstractmethod
-    def generate_interactions(self, changes: list[StateChange]) -> list[str]:
+    def generate_interactions(self, intents: list[MutationIntent]) -> list[str]:
         pass
 
     @abstractmethod
-    def generate_interaction(self, entity: BaseStateEntity, change: StateChange | None) -> str:
+    def generate_interaction(self, entity: BaseStateEntity, intent: MutationIntent | None) -> str:
         pass
 
     @abstractmethod
@@ -40,7 +40,7 @@ class LlmInteractionsController(BaseInteractionsController):
     def record_interaction(self, interaction_object: dict[str, str]):
         self.interactions.append(interaction_object)
 
-    def generate_interactions(self, changes: list[StateChange]) -> list[str]:
+    def generate_interactions(self, intents: list[MutationIntent]) -> list[str]:
         entities: list[BaseStateEntity] = self.get_state_controller().storage.get_all()
 
         incomplete_entities = [
@@ -51,26 +51,26 @@ class LlmInteractionsController(BaseInteractionsController):
         if not incomplete_entities:
             return []
 
-        changes_by_context_ref = {change.context_ref: change for change in changes}
+        intents_by_class_name = {intent.model_class_name: intent for intent in intents}
 
         interactions = []
         for entity in incomplete_entities:
             entity_class_name = entity.__class__.__name__
-            change = changes_by_context_ref.get(entity_class_name)
-            interaction = self.generate_interaction(entity, change)
+            intent = intents_by_class_name.get(entity_class_name)
+            interaction = self.generate_interaction(entity, intent)
             interactions.append(interaction)
 
         return interactions
 
-    def generate_interaction(self, entity: BaseStateEntity, change: StateChange | None) -> str:
+    def generate_interaction(self, entity: BaseStateEntity, intent: MutationIntent | None) -> str:
         entity_json = entity.content.model_dump_json(indent=2, exclude_none=True)
         entity_schema = json.dumps(entity.content.model_json_schema(), indent=2)
 
-        if change:
-            change_json = change.model_dump_json(indent=2, exclude_none=True)
+        if intent:
+            intent_json = intent.model_dump_json(indent=2, exclude_none=True)
             change_context = f"""
         Last interaction resulted in the following change:
-        {change_json}
+        {intent_json}
         """
         else:
             change_context = ""

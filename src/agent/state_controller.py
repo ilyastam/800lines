@@ -1,13 +1,15 @@
+import json
+
 from agent.inputs import BaseInput
-from agent.llm_parser import parse_state_models_with_llm
-from agent.state_entity import BaseStateEntity, LlmParsedStateEntity
+from agent.llm_parser import parse_mutation_intent_with_llm
+from agent.state_entity import BaseStateEntity
 from agent.state_storage import (
     DefaultEmbeddingService,
     EmbeddingService,
     InMemoryStateStorage,
     StateStorage,
 )
-from agent.types import StateChange
+from agent.types import FieldDiff, ModelContext, MutationIntent
 
 
 class BaseStateController:
@@ -29,59 +31,72 @@ class BaseStateController:
         )
 
     def is_state_completable(self):
-        return all([entity.is_completable() for entity in self.storage.get_all()])
+        entities = self.storage.get_all()
+        return bool(entities) and all(entity.is_completable() for entity in entities)
 
     def is_state_completed(self):
-        return all([entity.is_completed() for entity in self.storage.get_all()])
+        entities = self.storage.get_all()
+        return bool(entities) and all(entity.is_completed() for entity in entities)
 
-    def compute_state(self, input: BaseInput) -> list[StateChange]:
+    def compute_state(self, input: BaseInput) -> list[MutationIntent]:
         """
         Compute and store state from input.
 
         Args:
             input: The input to process
-        """
-        input_fields_to_state_models: dict[str, list[type[BaseStateEntity]]] = (
-            input.get_extracts_mapping()
-        )
 
-        all_parsed_models: list[BaseStateEntity] = []
+        Returns:
+            List of MutationIntent objects representing changes made
+        """
+        input_fields_to_state_models = input.get_extracts_mapping()
+
+        all_intents: list[MutationIntent] = []
 
         for input_field_name, state_model_classes in input_fields_to_state_models.items():
             input_field_value = getattr(input, input_field_name)
-
             if not input_field_value:
                 continue
 
-            llp_parseable_models: list[type[LlmParsedStateEntity]] = list(filter(
-                lambda model_class: issubclass(model_class, LlmParsedStateEntity),
-                state_model_classes
-            ))
+            model_contexts = [
+                ModelContext(model_class=json.dumps(cls.model_json_schema()))
+                for cls in state_model_classes
+            ]
 
-            parsed_models = parse_state_models_with_llm(
+            intents = parse_mutation_intent_with_llm(
                 input_field_value,
-                llp_parseable_models,
-                context=input.context
+                model_contexts,
+                prior_interactions=input.context
             )
-            if parsed_models:
-                all_parsed_models.extend(parsed_models)
+            all_intents.extend(intents)
 
-        # Store all parsed models
-        return self.update_state(all_parsed_models)
+        return self.storage.add_intents(all_intents)
 
-    def update_state(self, state_models: list[BaseStateEntity]) -> list[StateChange]:
+    def update_state(self, state_models: list[BaseStateEntity]) -> list[MutationIntent]:
         """
         Store state models in storage.
-        The storage will increment the state version and assign it to all entities.
+        Converts entities to MutationIntents and applies them.
 
         Args:
             state_models: List of state entities to store
 
         Returns:
-            List of StateChange objects representing changes made
+            List of MutationIntent objects representing changes made
         """
-        state_changes = self.storage.add_entities(state_models)
-        return state_changes
+        intents = self._entities_to_intents(state_models)
+        return self.storage.add_intents(intents)
+
+    def _entities_to_intents(self, entities: list[BaseStateEntity]) -> list[MutationIntent]:
+        """Convert entities to MutationIntents."""
+        intents: list[MutationIntent] = []
+        for entity in entities:
+            content_dict = entity.content.model_dump(exclude_unset=True, exclude_defaults=True)
+            diffs = [FieldDiff(field_name=k, new_value=v) for k, v in content_dict.items()]
+            intent = MutationIntent(
+                model_class_name=type(entity).__name__,
+                diffs=diffs
+            )
+            intents.append(intent)
+        return intents
 
     def find_related(
         self,

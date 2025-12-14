@@ -4,7 +4,7 @@ from datetime import datetime
 
 from agent.state_entity import BaseStateEntity
 from agent.state_storage import StateStorage, EmbeddingService
-from agent.state_storage.state_change import StateChange, compare_entities
+from agent.types import MutationIntent
 from examples.boat_booking.state_entity import BoatSpecEntity, DesiredLocationEntity, DatesAndDurationEntity
 
 
@@ -15,23 +15,23 @@ class BBStateStorage(StateStorage):
         self.location: DesiredLocationEntity | None = None
         self.dates_and_duration: DatesAndDurationEntity | None = None
 
-    def add_entities(self, entities: list[BaseStateEntity]) -> list[StateChange]:
-        state_changes: list[StateChange] = []
+    def add_intents(self, intents: list[MutationIntent]) -> list[MutationIntent]:
+        applied_intents: list[MutationIntent] = []
 
-        for entity in entities:
-            state_change: StateChange | None = None
-            match entity:
-                case BoatSpecEntity():
-                    self.boat_spec, state_change = BoatSpecEntity.merge(self.boat_spec, entity)
-                case DesiredLocationEntity():
-                    self.location, state_change = DesiredLocationEntity.merge(self.location, entity)
-                case DatesAndDurationEntity():
-                    self.dates_and_duration, state_change = DatesAndDurationEntity.merge(self.dates_and_duration, entity)
+        for intent in intents:
+            applied_intent: MutationIntent | None = None
+            match intent.model_class_name:
+                case 'BoatSpecEntity':
+                    self.boat_spec, applied_intent = BoatSpecEntity.merge(self.boat_spec, intent)
+                case 'DesiredLocationEntity':
+                    self.location, applied_intent = DesiredLocationEntity.merge(self.location, intent)
+                case 'DatesAndDurationEntity':
+                    self.dates_and_duration, applied_intent = DatesAndDurationEntity.merge(self.dates_and_duration, intent)
 
-            if state_change:
-                state_changes.append(state_change)
+            if applied_intent and applied_intent.diffs:
+                applied_intents.append(applied_intent)
 
-        return state_changes
+        return applied_intents
 
     def get_current_version(self) -> int:
         pass
@@ -53,7 +53,7 @@ class BBStateStorage(StateStorage):
         pass
 
     def get_all(self, chronological: bool = True) -> list[BaseStateEntity]:
-        return [self.boat_spec, self.location, self.dates_and_duration]
+        return [e for e in [self.boat_spec, self.location, self.dates_and_duration] if e is not None]
 
     def get_chronological_range(self, start_index: int = 0, limit: int | None = None) -> list[BaseStateEntity]:
         pass
