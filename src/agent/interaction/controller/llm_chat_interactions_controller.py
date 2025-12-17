@@ -1,25 +1,26 @@
 import json
 import textwrap
 
-from agent.interactions.base_interactions_controller import BaseInteractionsController, client
+from agent.interaction.llm_interaction import ChatInteraction
+from agent.interaction.controller.base_interactions_controller import BaseInteractionsController, client
 from agent.state.controller.base_state_controller import BaseStateController
 from agent.state.entity.state_entity import BaseStateEntity
 from agent.state.entity.types import MutationIntent
 
 
-class LlmInteractionsController(BaseInteractionsController):
+class LlmChatInteractionsController(BaseInteractionsController):
 
     def __init__(self, state_controller: BaseStateController):
         self.state_controller: BaseStateController = state_controller
-        self.interactions: list[dict[str, str]] = []
+        self.interactions: list[ChatInteraction] = []
 
     def get_state_controller(self):
         return self.state_controller
 
-    def record_interaction(self, interaction_object: dict[str, str]):
+    def record_interaction(self, interaction_object: ChatInteraction):
         self.interactions.append(interaction_object)
 
-    def generate_interactions(self, intents: list[MutationIntent]) -> list[str]:
+    def generate_interactions(self, intents: list[MutationIntent]) -> list[ChatInteraction]:
         entities: list[BaseStateEntity] = self.get_state_controller().storage.get_all()
 
         incomplete_entities = [
@@ -41,7 +42,7 @@ class LlmInteractionsController(BaseInteractionsController):
 
         return interactions
 
-    def generate_interaction(self, entity: BaseStateEntity, intent: MutationIntent | None) -> str:
+    def generate_interaction(self, entity: BaseStateEntity, intent: MutationIntent | None) -> ChatInteraction:
         entity_json = entity.content.model_dump_json(indent=2, exclude_none=True)
         entity_schema = json.dumps(entity.content.model_json_schema(), indent=2)
 
@@ -78,8 +79,8 @@ class LlmInteractionsController(BaseInteractionsController):
 
         completion = client.chat.completions.parse(
             model="gpt-4o",
-            messages=[{"role": "system", "content": prompt}] + self.interactions
+            messages=[{"role": "system", "content": prompt}] + [i.to_llm_message() for i in self.interactions]
         )
 
-        interaction = completion.choices[0].message.content
-        return interaction
+        content = completion.choices[0].message.content
+        return ChatInteraction(role='assistant', content=content)

@@ -1,18 +1,26 @@
 
 
 from agent.inputs import BaseInput
+from agent.interaction.base_interaction import BaseInteraction
+from agent.interaction.controller.base_interactions_controller import BaseInteractionsController
+from agent.state.controller.base_state_controller import BaseStateController
+from agent.state.entity.types import MutationIntent
 
 
 class BaseAgent():
-    
-    def gather_input(self) -> BaseInput:
-        pass
 
-    def process_input(self, input: BaseInput) -> None: # tuple[ObjectiveStatus, list[Interaction]]:
-        input.get_extracts_mapping()
-        pass
+    def __init__(self,
+                 state_controller: BaseStateController,
+                 interactions_controller: BaseInteractionsController):
+        self.state_controller = state_controller
+        self.interactions_controller = interactions_controller
 
-    def emit_interactions(self, interactions: list[Interaction]) -> None:
+    def consume_inputs(self, inputs: list[BaseInput]) -> list[BaseInteraction]: # tuple[ObjectiveStatus, list[Interaction]]:
+        changes: list[MutationIntent] = self.state_controller.update_state(inputs)
+        interactions = self.interactions_controller.generate_interactions(changes)
+        return interactions
+
+    def emit_interactions(self, interactions: list[BaseInteraction]) -> None:
         pass
 
 

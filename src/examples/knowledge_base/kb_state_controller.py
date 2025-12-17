@@ -4,7 +4,7 @@ from agent.inputs import BaseInput
 
 class KbStateController(BaseStateController):
     
-    def compute_state(self, inpt: BaseInput):
+    def update_state(self, inpt: BaseInput):
         pass
 
     

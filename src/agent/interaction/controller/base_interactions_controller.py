@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 
+from agent.interaction.base_interaction import BaseInteraction
 from agent.state.entity.state_entity import BaseStateEntity
 from agent.state.entity.types import MutationIntent
 from openai import OpenAI
@@ -13,13 +14,13 @@ class BaseInteractionsController(ABC):
         pass
 
     @abstractmethod
-    def generate_interactions(self, intents: list[MutationIntent]) -> list[str]:
+    def generate_interactions(self, intents: list[MutationIntent]) -> list[BaseInteraction]:
         pass
 
     @abstractmethod
-    def generate_interaction(self, entity: BaseStateEntity, intent: MutationIntent | None) -> str:
+    def generate_interaction(self, entity: BaseStateEntity, intent: MutationIntent | None) -> BaseInteraction:
         pass
 
     @abstractmethod
-    def record_interaction(self, interaction: str):
+    def record_interaction(self, interaction: BaseInteraction):
         pass

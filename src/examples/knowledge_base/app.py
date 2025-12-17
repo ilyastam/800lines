@@ -10,6 +10,6 @@ if __name__ == '__main__':
     bsc = BaseStateController()
 
     print(kb_input.get_extracts_mapping())
-    bsc.compute_state(kb_input)
+    bsc.update_state(kb_input)
 
     #Next: parse state entities from input

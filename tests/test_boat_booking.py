@@ -1,7 +1,7 @@
 import shutil
 import unittest
 
-from agent.interactions.llm_interactions_controller import LlmInteractionsController
+from agent.interaction.controller.llm_chat_interactions_controller import LlmChatInteractionsController
 from agent.parser.llm_parser import parse_mutation_intent_with_llm
 from agent.state.entity.types import EntityContext
 from agent.state.controller.base_state_controller import BaseStateController
@@ -18,10 +18,10 @@ class TestBoatBooking(unittest.TestCase):
         bb_input = BoatBookingInput(chat_message=message)
 
         state_controller = BaseStateController(storage=BBStateStorage())
-        interactions_controller = LlmInteractionsController(state_controller=state_controller)
+        interactions_controller = LlmChatInteractionsController(state_controller=state_controller)
 
         interactions_controller.record_interaction({'role': 'user', 'content': message})
-        changes = state_controller.compute_state(bb_input)
+        changes = state_controller.update_state(bb_input)
 
         interactions = interactions_controller.generate_interactions(changes)
         interaction = interactions[0]
@@ -34,7 +34,7 @@ class TestBoatBooking(unittest.TestCase):
         ])
 
         interactions_controller.record_interaction({'role': 'user', 'content': message})
-        changes = state_controller.compute_state(bb_input)
+        changes = state_controller.update_state(bb_input)
 
         pass
 

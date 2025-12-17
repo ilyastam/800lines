@@ -4,7 +4,7 @@ import shutil
 
 from pydantic import BaseModel
 
-from agent.interactions.llm_interactions_controller import LlmInteractionsController
+from agent.interaction.controller.llm_chat_interactions_controller import LlmChatInteractionsController
 from agent.state.controller.base_state_controller import BaseStateController
 from agent.state.storage.one_entity_per_type_storage import OneEntityPerTypeStorage
 from examples.boat_booking.input import BoatBookingInput
@@ -28,11 +28,11 @@ if __name__ == '__main__':
     state_controller = BaseStateController(storage=OneEntityPerTypeStorage(
         entity_classes=[DesiredLocationEntity, BoatSpecEntity, DatesAndDurationEntity]
     ))
-    interactions_controller = LlmInteractionsController(state_controller=state_controller)
+    interactions_controller = LlmChatInteractionsController(state_controller=state_controller)
 
     while True:
         interactions_controller.record_interaction({'role': 'user', 'content': message})
-        changes = state_controller.compute_state(bb_input)
+        changes = state_controller.update_state([bb_input])
         if state_controller.is_state_completed():
             print("We are done here")
             break
@@ -50,4 +50,6 @@ if __name__ == '__main__':
         print(model.model_dump())
 
 
-# TODO: do I need an agen class to tie together state controller and interactions controller ?
+# TODO: do I need an agen class to tie together state controller and interactions controller ? - yes
+# think about how to implement channel dispatchers, and how to connect emit to terminal in basic and fancy scenario
+#

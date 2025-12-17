@@ -8,7 +8,7 @@ from textual.widgets import Header, Footer, Input, Static, RichLog
 from textual.binding import Binding
 from textual import work
 
-from agent.interactions.llm_interactions_controller import LlmInteractionsController
+from agent.interaction.controller.llm_chat_interactions_controller import LlmChatInteractionsController
 from agent.state.controller.base_state_controller import BaseStateController
 from agent.state.entity.types import MutationIntent
 from examples.boat_booking.bb_state_storage import BBStateStorage
@@ -63,7 +63,7 @@ class BoatBookingTUI(App):
     def __init__(self) -> None:
         super().__init__()
         self.state_controller = BaseStateController(storage=BBStateStorage())
-        self.interactions_controller = LlmInteractionsController(
+        self.interactions_controller = LlmChatInteractionsController(
             state_controller=self.state_controller
         )
 
@@ -102,7 +102,7 @@ class BoatBookingTUI(App):
         })
 
         with redirect_stdout(captured_output):
-            changes = self.state_controller.compute_state(bb_input)
+            changes = self.state_controller.update_state(bb_input)
 
         self.call_from_thread(self.log_state_changes, changes)
 
