@@ -4,10 +4,10 @@ from agent.inputs import BaseInput
 from agent.llm_parser import parse_mutation_intent_with_llm
 from agent.state_entity import BaseStateEntity
 from agent.state_storage import (
+    BaseStateStorage,
     DefaultEmbeddingService,
     EmbeddingService,
     InMemoryStateStorage,
-    StateStorage,
 )
 from agent.types import FieldDiff, ModelContext, MutationIntent
 
@@ -15,8 +15,7 @@ from agent.types import FieldDiff, ModelContext, MutationIntent
 class BaseStateController:
     def __init__(
         self,
-        storage: StateStorage | None = None,
-        embedding_service: EmbeddingService | None = None
+        storage: BaseStateStorage | None = None
     ):
         """
         Initialize the state controller.
@@ -25,7 +24,6 @@ class BaseStateController:
             storage: Storage backend to use (defaults to InMemoryStateStorage)
             embedding_service: Embedding service to use (defaults to DefaultEmbeddingService)
         """
-        self.embedding_service = embedding_service or DefaultEmbeddingService()
         self.storage = storage or InMemoryStateStorage(
             embedding_service=self.embedding_service
         )
@@ -92,7 +90,7 @@ class BaseStateController:
             content_dict = entity.content.model_dump(exclude_unset=True, exclude_defaults=True)
             diffs = [FieldDiff(field_name=k, new_value=v) for k, v in content_dict.items()]
             intent = MutationIntent(
-                model_class_name=type(entity).__name__,
+                entity_class_name=type(entity).__name__,
                 diffs=diffs
             )
             intents.append(intent)

@@ -20,7 +20,7 @@ class FieldDiff(BaseModel):
 
 
 class MutationIntent(BaseModel):
-    model_class_name: str = Field(description="Name of the model class that user intents to mutate.")
+    entity_class_name: str = Field(description="Name of the entity class that user intends to mutate.")
     model_ref: str | None = Field(default=None, description="Reference to the specific model that user intends to mutate. Can be None.")
     diffs: list[FieldDiff] = Field(description="List of field changes")
     validation_errors: list[str] = Field(default_factory=list, description="Validation errors encountered during merge")

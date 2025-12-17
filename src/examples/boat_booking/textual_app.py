@@ -144,7 +144,7 @@ class BoatBookingTUI(App):
 
         for intent in changes:
             logs_pane.write(
-                f"[bold yellow]State Change: {intent.model_class_name}[/bold yellow]"
+                f"[bold yellow]State Change: {intent.entity_class_name}[/bold yellow]"
             )
             for diff in intent.diffs:
                 logs_pane.write(f"  [green]{diff.field_name}[/green] = {diff.new_value}")

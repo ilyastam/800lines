@@ -3,12 +3,12 @@ from __future__ import annotations
 from datetime import datetime
 
 from agent.state_entity import BaseStateEntity
-from agent.state_storage import StateStorage, EmbeddingService
+from agent.state_storage import BaseStateStorage, EmbeddingService
 from agent.types import MutationIntent
 from examples.boat_booking.state_entity import BoatSpecEntity, DesiredLocationEntity, DatesAndDurationEntity
 
 
-class BBStateStorage(StateStorage):
+class BBStateStorage(BaseStateStorage):
 
     def __init__(self):
         self.boat_spec: BoatSpecEntity | None = None
@@ -20,7 +20,7 @@ class BBStateStorage(StateStorage):
 
         for intent in intents:
             applied_intent: MutationIntent | None = None
-            match intent.model_class_name:
+            match intent.entity_class_name:
                 case 'BoatSpecEntity':
                     self.boat_spec, applied_intent = BoatSpecEntity.merge(self.boat_spec, intent)
                 case 'DesiredLocationEntity':
@@ -62,5 +62,5 @@ class BBStateStorage(StateStorage):
         pass
 
     @classmethod
-    def from_json(cls, data: dict, embedding_service: EmbeddingService) -> 'StateStorage':
+    def from_json(cls, data: dict, embedding_service: EmbeddingService) -> 'BaseStateStorage':
         pass

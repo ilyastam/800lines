@@ -51,7 +51,7 @@ class LlmInteractionsController(BaseInteractionsController):
         if not incomplete_entities:
             return []
 
-        intents_by_class_name = {intent.model_class_name: intent for intent in intents}
+        intents_by_class_name = {intent.entity_class_name: intent for intent in intents}
 
         interactions = []
         for entity in incomplete_entities:

@@ -3,10 +3,12 @@ from pydantic import BaseModel, Field
 
 from agent.state_entity import BaseStateEntity
 
+
 # marker
 class ExtractsTo:
     def __init__(self, *entities): 
         self.entities = entities
+
 
 # generic-like alias: InputField[T, EntA, EntB, ...] -> Annotated[T, ExtractsTo(...)]
 class InputField:
@@ -15,6 +17,7 @@ class InputField:
             params = (params,)
         tp, *entities = params
         return Annotated[tp, ExtractsTo(*entities)]
+
 
 # base model with helper
 class BaseInput(BaseModel):

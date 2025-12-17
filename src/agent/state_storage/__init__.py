@@ -6,11 +6,12 @@ from agent.state_storage.similarity_metrics import (
     dot_product_similarity,
     euclidean_similarity,
 )
-from agent.state_storage.storage import InMemoryStateStorage, StateStorage
+from agent.state_storage.base_state_storage import BaseStateStorage
+from agent.state_storage.storage import InMemoryStateStorage
 
 __all__ = [
     # Storage classes
-    "StateStorage",
+    "BaseStateStorage",
     "InMemoryStateStorage",
     # Embedding services
     "EmbeddingService",

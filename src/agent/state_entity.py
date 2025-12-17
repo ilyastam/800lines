@@ -44,7 +44,9 @@ class BaseStateEntity(BaseModel, Generic[ContentType]):
         return self
 
     @classmethod
-    def merge(cls, current: 'BaseStateEntity' | None, intent: MutationIntent, on_validation_error: ValidationErrorHandlingMode = ValidationErrorHandlingMode.skip_merge) -> tuple['BaseStateEntity', MutationIntent]:
+    def merge(cls, current: 'BaseStateEntity' | None,
+              intent: MutationIntent,
+              on_validation_error: ValidationErrorHandlingMode = ValidationErrorHandlingMode.skip_merge) -> tuple['BaseStateEntity', MutationIntent]:
         validation_errors = current.validate_before_merge(intent) if current else []
 
         if validation_errors:

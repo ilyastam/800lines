@@ -1,178 +1,19 @@
-"""State storage implementations for semantic search and chronological tracking."""
+"""In-memory state storage implementation for semantic search and chronological tracking."""
 
 import uuid
-from abc import ABC, abstractmethod
 from collections.abc import Callable
 from datetime import datetime, timezone
 
 import numpy as np
 
+from agent.state_storage.base_state_storage import BaseStateStorage
 from agent.state_storage.embedding_service import EmbeddingService
 from agent.state_storage.similarity_metrics import cosine_similarity
 from agent.state_entity import BaseStateEntity
 from agent.types import MutationIntent, FieldDiff
 
 
-class StateStorage(ABC):
-    """Abstract base class for state storage implementations."""
-
-    @abstractmethod
-    def apply_mutation_intents(self, intents: list[MutationIntent]) -> list[MutationIntent]:
-        """
-        Apply mutation intents to storage.
-
-        Args:
-            intents: List of mutation intents to apply
-
-        Returns:
-            List of applied MutationIntent objects
-        """
-        pass
-
-    @abstractmethod
-    def get_current_version(self) -> int:
-        """
-        Get the current state version.
-
-        Returns:
-            Current version number
-        """
-        pass
-
-    @abstractmethod
-    def increment_version(self) -> int:
-        """
-        Increment the state version and record the timestamp.
-
-        Returns:
-            The new version number
-        """
-        pass
-
-    @abstractmethod
-    def get_version_timestamp(self, version: int) -> datetime | None:
-        """
-        Get the timestamp when a specific version was created.
-
-        Args:
-            version: The version number
-
-        Returns:
-            Timestamp of the version, or None if version doesn't exist
-        """
-        pass
-
-    @abstractmethod
-    def get_entity_version(self, entity_id: str) -> int | None:
-        """
-        Get the version number when an entity was added.
-
-        Args:
-            entity_id: The unique identifier of the entity
-
-        Returns:
-            Version number, or None if entity doesn't exist
-        """
-        pass
-
-    @abstractmethod
-    def get_similar(
-        self,
-        entity: BaseStateEntity,
-        threshold: float = 0.8,
-        limit: int = 10,
-        order_by: str = "similarity"
-    ) -> list[tuple[BaseStateEntity, float]]:
-        """
-        Get semantically similar entities with their similarity scores.
-
-        Args:
-            entity: The entity to find similar entities for
-            threshold: Minimum similarity score (0-1)
-            limit: Maximum number of results to return
-            order_by: How to order results - "similarity" (default) or "chronological"
-
-        Returns:
-            List of (entity, similarity_score) tuples
-            - If order_by="similarity": sorted by similarity score descending
-            - If order_by="chronological": sorted by insertion order (oldest first)
-        """
-        pass
-
-    @abstractmethod
-    def get_by_id(self, entity_id: str) -> BaseStateEntity | None:
-        """
-        Get entity by ID.
-
-        Args:
-            entity_id: The unique identifier of the entity
-
-        Returns:
-            The entity if found, None otherwise
-        """
-        pass
-
-    @abstractmethod
-    def get_all(self, chronological: bool = True) -> list[BaseStateEntity]:
-        """
-        Get all stored entities.
-
-        Args:
-            chronological: If True, return entities in chronological order (oldest first)
-                          If False, no specific order guaranteed
-
-        Returns:
-            List of all entities
-        """
-        pass
-
-    @abstractmethod
-    def get_chronological_range(
-        self,
-        start_index: int = 0,
-        limit: int | None = None
-    ) -> list[BaseStateEntity]:
-        """
-        Get entities in chronological order with pagination.
-
-        Args:
-            start_index: Starting index (0-based)
-            limit: Maximum number of entities to return (None = all)
-
-        Returns:
-            List of entities in chronological order
-        """
-        pass
-
-    @abstractmethod
-    def to_json(self) -> dict:
-        """
-        Serialize storage to JSON-compatible dictionary.
-        Must preserve insertion order when deserialized.
-
-        Returns:
-            JSON-compatible dictionary representation
-        """
-        pass
-
-    @classmethod
-    @abstractmethod
-    def from_json(cls, data: dict, embedding_service: EmbeddingService) -> 'StateStorage':
-        """
-        Deserialize storage from JSON-compatible dictionary.
-        Preserves insertion order from serialization.
-
-        Args:
-            data: JSON-compatible dictionary from to_json()
-            embedding_service: Embedding service to use for the storage
-
-        Returns:
-            Reconstructed StateStorage instance
-        """
-        pass
-
-
-class InMemoryStateStorage(StateStorage):
+class InMemoryStateStorage(BaseStateStorage):
     """
     In-memory state storage using embeddings for semantic search.
     Maintains insertion order and supports chronological retrieval.
@@ -291,7 +132,7 @@ class InMemoryStateStorage(StateStorage):
             content_dict = entity.content.model_dump(exclude_unset=True, exclude_defaults=True)
             diffs = [FieldDiff(field_name=k, new_value=v) for k, v in content_dict.items()]
             intent = MutationIntent(
-                model_class_name=type(entity).__name__,
+                entity_class_name=type(entity).__name__,
                 diffs=diffs
             )
             intents.append(intent)
