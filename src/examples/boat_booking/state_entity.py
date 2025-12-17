@@ -10,7 +10,7 @@ class DesiredLocation(BaseModel, Completable):
     city: str | None = Field(default=None, description="City where user intends to charter a boat")
 
     def is_completed(self) -> bool:
-        return self.country != 'unknown' and self.region and self.city
+        return self.country is not None and self.region is not None and self.city is not None
 
 
 class BoatSpec(BaseModel, Completable):
@@ -28,7 +28,7 @@ class DatesAndDuration(BaseModel, Completable):
     number_of_days: int | None = Field(default=None, description="Trip duration in days requested by the user")
 
     def is_completed(self) -> bool:
-        return self.trip_start_date != 'unknown' and self.trip_end_date and self.number_of_days
+        return self.trip_start_date is not None and self.trip_end_date is not None and bool(self.number_of_days)
 
 
 class DesiredLocationEntity(LlmParsedStateEntity[DesiredLocation]):

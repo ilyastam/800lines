@@ -6,8 +6,10 @@ from pydantic import BaseModel
 
 from agent.interaction_controller import LlmInteractionsController
 from agent.state_controller import BaseStateController
+from agent.state_storage.one_entity_per_type_storage import OneEntityPerTypeStorage
 from examples.boat_booking.bb_state_storage import BBStateStorage
 from examples.boat_booking.input import BoatBookingInput
+from examples.boat_booking.state_entity import DesiredLocationEntity, BoatSpecEntity, DatesAndDurationEntity
 
 
 class PydanticEncoder(json.JSONEncoder):
@@ -24,7 +26,9 @@ if __name__ == '__main__':
     message = "I want to book a 40 ft catamaran in Split Croatia for July 10th, 2026"
     bb_input = BoatBookingInput(chat_message=message)
 
-    state_controller = BaseStateController(storage=BBStateStorage())
+    state_controller = BaseStateController(storage=OneEntityPerTypeStorage(
+        entity_classes=[DesiredLocationEntity, BoatSpecEntity, DatesAndDurationEntity]
+    ))
     interactions_controller = LlmInteractionsController(state_controller=state_controller)
 
     while True:
