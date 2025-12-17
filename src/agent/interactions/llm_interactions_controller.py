@@ -1,31 +1,10 @@
 import json
 import textwrap
-from abc import ABC, abstractmethod
 
-from agent.state_controller import BaseStateController
-from agent.state_entity import BaseStateEntity
-from agent.types import MutationIntent
-from openai import OpenAI
-
-client = OpenAI()
-
-class BaseInteractionsController(ABC):
-
-    @abstractmethod
-    def get_state_controller(self):
-        pass
-
-    @abstractmethod
-    def generate_interactions(self, intents: list[MutationIntent]) -> list[str]:
-        pass
-
-    @abstractmethod
-    def generate_interaction(self, entity: BaseStateEntity, intent: MutationIntent | None) -> str:
-        pass
-
-    @abstractmethod
-    def record_interaction(self, interaction: str):
-        pass
+from agent.interactions.base_interactions_controller import BaseInteractionsController, client
+from agent.state.controller.base_state_controller import BaseStateController
+from agent.state.entity.state_entity import BaseStateEntity
+from agent.state.entity.types import MutationIntent
 
 
 class LlmInteractionsController(BaseInteractionsController):
@@ -96,8 +75,6 @@ class LlmInteractionsController(BaseInteractionsController):
         If user is asking a question related to the data you have - answer it. If user is asking a question about a general topic - answer it, but
         let them know that they need to check facts on their own.
         """)
-
-        print(prompt)
 
         completion = client.chat.completions.parse(
             model="gpt-4o",

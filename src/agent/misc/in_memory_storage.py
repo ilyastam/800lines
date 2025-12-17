@@ -6,11 +6,11 @@ from datetime import datetime, timezone
 
 import numpy as np
 
-from agent.state_storage.base_state_storage import BaseStateStorage
-from agent.state_storage.embedding_service import EmbeddingService
-from agent.state_storage.similarity_metrics import cosine_similarity
-from agent.state_entity import BaseStateEntity
-from agent.types import MutationIntent, FieldDiff
+from agent.state.storage.base_state_storage import BaseStateStorage
+from agent.misc.embedding_service import EmbeddingService
+from agent.misc.similarity_metrics import cosine_similarity
+from agent.state.entity.state_entity import BaseStateEntity
+from agent.state.entity.types import MutationIntent, FieldDiff
 
 
 class InMemoryStateStorage(BaseStateStorage):

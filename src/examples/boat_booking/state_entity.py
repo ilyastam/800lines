@@ -1,6 +1,7 @@
 from datetime import datetime
 from typing import Literal
-from agent.state_entity import LlmParsedStateEntity, Completable
+from agent.state.entity.state_entity import Completable
+from agent.state.entity.llm_parsed_entity import LlmParsedStateEntity
 from pydantic import BaseModel, Field
 
 

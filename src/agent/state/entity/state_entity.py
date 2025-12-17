@@ -3,10 +3,10 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Generic, TypeVar, Any
+from typing import Generic, TypeVar
 from pydantic import BaseModel, Field
 
-from agent.types import MutationIntent, FieldDiff
+from agent.state.entity.types import MutationIntent, FieldDiff
 
 ContentType = TypeVar("ContentType")
 
@@ -66,22 +66,6 @@ class BaseStateEntity(BaseModel, Generic[ContentType]):
 
     def validate_before_merge(self, intent: MutationIntent) -> list[str]:
         return []
-
-
-class LlmParsedStateEntity(BaseStateEntity[ContentType]):
-
-    #TODO : make this more abstract 
-    @classmethod
-    def model_json_schema(cls, **kwargs) -> dict[str, Any]:
-        """Override to exclude embedding field from JSON schema"""
-        schema = super().model_json_schema(**kwargs)
-        # Remove embedding field from properties if it exists
-        if "properties" in schema and "embedding" in schema["properties"]:
-            del schema["properties"]["embedding"]
-        # Remove from required fields if it exists
-        if "required" in schema and "embedding" in schema["required"]:
-            schema["required"].remove("embedding")
-        return schema
 
     
 

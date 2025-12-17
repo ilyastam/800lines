@@ -8,9 +8,9 @@ from textual.widgets import Header, Footer, Input, Static, RichLog
 from textual.binding import Binding
 from textual import work
 
-from agent.interaction_controller import LlmInteractionsController
-from agent.state_controller import BaseStateController
-from agent.types import MutationIntent
+from agent.interactions.llm_interactions_controller import LlmInteractionsController
+from agent.state.controller.base_state_controller import BaseStateController
+from agent.state.entity.types import MutationIntent
 from examples.boat_booking.bb_state_storage import BBStateStorage
 from examples.boat_booking.input import BoatBookingInput
 

@@ -1,10 +1,8 @@
 from typing import Any, Union
-
 from openai import OpenAI
 from pydantic import create_model
-
-from agent.state_entity import LlmParsedStateEntity
-from agent.types import ModelContext, MutationIntent, MutationIntents
+from agent.state.entity.llm_parsed_entity import LlmParsedStateEntity
+from agent.state.entity.types import EntityContext, MutationIntent, MutationIntents
 
 client = OpenAI()
 
@@ -35,15 +33,15 @@ def parse_state_models_with_llm(input_text: str,
 
 
 def parse_mutation_intent_with_llm(input_text: str,
-                                   model_context: list[ModelContext],
+                                   entity_context: list[EntityContext],
                                    prior_interactions: list[dict[str, str]] | None = None
                                    ) -> list[MutationIntent]:
 
-    combined_model_ctx = "\n".join([mctx.model_dump_json() for mctx in model_context])
+    combined_entity_ctx = "\n".join([mctx.model_dump_json() for mctx in entity_context])
 
     messages = (prior_interactions or []) + [
         {"role": "system", "content": "Below is the description of data entities that user can modify (set or unset a field value). User may also say something unrelated to these entities. If user intends to modify model entities, capture and return their intent according to provided response schema. If the intent is to unset a field - return default value for this field according to schema."},
-        {"role": "system", "content": combined_model_ctx},
+        {"role": "system", "content": combined_entity_ctx},
         {"role": "user", "content": input_text},
     ]
 

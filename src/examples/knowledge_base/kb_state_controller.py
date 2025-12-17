@@ -1,4 +1,4 @@
-from agent.state_controller import BaseStateController
+from agent.state.controller.base_state_controller import BaseStateController
 from agent.inputs import BaseInput
 
 

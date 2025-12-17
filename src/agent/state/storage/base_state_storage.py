@@ -2,8 +2,8 @@
 
 from abc import ABC, abstractmethod
 
-from agent.state_entity import BaseStateEntity
-from agent.types import MutationIntent
+from agent.state.entity.state_entity import BaseStateEntity
+from agent.state.entity.types import MutationIntent
 
 
 class BaseStateStorage(ABC):

@@ -1,7 +1,7 @@
 from typing import Annotated
 from pydantic import BaseModel, Field
 
-from agent.state_entity import BaseStateEntity
+from agent.state.entity.state_entity import BaseStateEntity
 
 
 # marker

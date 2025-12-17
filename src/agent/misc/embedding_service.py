@@ -1,7 +1,7 @@
 """Embedding service for generating vector embeddings from state entities."""
 
 from abc import ABC, abstractmethod
-from agent.state_entity import BaseStateEntity
+from agent.state.entity.state_entity import BaseStateEntity
 
 
 class EmbeddingService(ABC):

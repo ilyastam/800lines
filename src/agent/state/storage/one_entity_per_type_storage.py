@@ -1,9 +1,9 @@
 import importlib
 import json
 
-from agent.state_entity import BaseStateEntity
-from agent.state_storage import BaseStateStorage
-from agent.types import MutationIntent
+from agent.state.entity.state_entity import BaseStateEntity
+from agent.state import BaseStateStorage
+from agent.state.entity.types import MutationIntent
 
 
 def _get_qualified_name(cls: type) -> str:

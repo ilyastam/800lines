@@ -1,7 +1,5 @@
-from typing import ClassVar
-
 from pydantic import Field
-from agent.state_entity import LlmParsedStateEntity
+from agent.state.entity.llm_parsed_entity import LlmParsedStateEntity
 
 
 class Task(LlmParsedStateEntity[str]):

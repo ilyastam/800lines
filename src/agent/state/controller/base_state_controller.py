@@ -1,15 +1,10 @@
 import json
 
 from agent.inputs import BaseInput
-from agent.llm_parser import parse_mutation_intent_with_llm
-from agent.state_entity import BaseStateEntity
-from agent.state_storage import (
-    BaseStateStorage,
-    DefaultEmbeddingService,
-    EmbeddingService,
-    InMemoryStateStorage,
-)
-from agent.types import FieldDiff, ModelContext, MutationIntent
+from agent.parser.llm_parser import parse_mutation_intent_with_llm
+from agent.state.entity.state_entity import BaseStateEntity
+from agent.state import BaseStateStorage
+from agent.state.entity.types import FieldDiff, EntityContext, MutationIntent
 
 
 class BaseStateController:
@@ -24,9 +19,7 @@ class BaseStateController:
             storage: Storage backend to use (defaults to InMemoryStateStorage)
             embedding_service: Embedding service to use (defaults to DefaultEmbeddingService)
         """
-        self.storage = storage or InMemoryStateStorage(
-            embedding_service=self.embedding_service
-        )
+        self.storage = storage
 
     def is_state_completable(self):
         entities = self.storage.get_all()
@@ -56,7 +49,7 @@ class BaseStateController:
                 continue
 
             model_contexts = [
-                ModelContext(model_class=json.dumps(cls.model_json_schema()))
+                EntityContext(entity_class_name=json.dumps(cls.model_json_schema()))
                 for cls in state_model_classes
             ]
 
@@ -69,22 +62,7 @@ class BaseStateController:
 
         return self.storage.apply_mutation_intents(all_intents)
 
-    def update_state(self, state_models: list[BaseStateEntity]) -> list[MutationIntent]:
-        """
-        Store state models in storage.
-        Converts entities to MutationIntents and applies them.
-
-        Args:
-            state_models: List of state entities to store
-
-        Returns:
-            List of MutationIntent objects representing changes made
-        """
-        intents = self._entities_to_intents(state_models)
-        return self.storage.apply_mutation_intents(intents)
-
     def _entities_to_intents(self, entities: list[BaseStateEntity]) -> list[MutationIntent]:
-        """Convert entities to MutationIntents."""
         intents: list[MutationIntent] = []
         for entity in entities:
             content_dict = entity.content.model_dump(exclude_unset=True, exclude_defaults=True)
@@ -96,40 +74,3 @@ class BaseStateController:
             intents.append(intent)
         return intents
 
-    def find_related(
-        self,
-        entity: BaseStateEntity,
-        threshold: float = 0.8,
-        limit: int = 10,
-        order_by: str = "similarity"
-    ) -> list[tuple[BaseStateEntity, float]]:
-        """
-        Find entities related to the given entity.
-
-        Args:
-            entity: The entity to find similar entities for
-            threshold: Minimum similarity score (0-1)
-            limit: Maximum number of results to return
-            order_by: How to order results - "similarity" (default) or "chronological"
-
-        Returns:
-            List of (entity, similarity_score) tuples
-        """
-        return self.storage.get_similar(entity, threshold, limit, order_by)
-
-    def get_chronological(
-        self,
-        start_index: int = 0,
-        limit: int | None = None
-    ) -> list[BaseStateEntity]:
-        """
-        Get entities in chronological order.
-
-        Args:
-            start_index: Starting index (0-based)
-            limit: Maximum number of entities to return (None = all)
-
-        Returns:
-            List of entities in chronological order
-        """
-        return self.storage.get_chronological_range(start_index, limit)

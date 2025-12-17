@@ -1,11 +1,10 @@
 import shutil
-import textwrap
 import unittest
 
-from agent.interaction_controller import LlmInteractionsController
-from agent.llm_parser import parse_mutation_intent_with_llm
-from agent.types import ModelContext
-from agent.state_controller import BaseStateController
+from agent.interactions.llm_interactions_controller import LlmInteractionsController
+from agent.parser.llm_parser import parse_mutation_intent_with_llm
+from agent.state.entity.types import EntityContext
+from agent.state.controller.base_state_controller import BaseStateController
 from examples.boat_booking.bb_state_storage import BBStateStorage
 from examples.boat_booking.input import BoatBookingInput
 from examples.boat_booking.state_entity import BoatSpecEntity
@@ -43,12 +42,12 @@ class TestBoatBooking(unittest.TestCase):
         import json
         message = "I want to book a 40ft catamaran"
 
-        model_ctx = ModelContext(
-            model_class=json.dumps(BoatSpecEntity.model_json_schema()),
+        model_ctx = EntityContext(
+            entity_class_name=json.dumps(BoatSpecEntity.model_json_schema()),
         )
         intents = parse_mutation_intent_with_llm(
             input_text=message,
-            model_context=[model_ctx],
+            entity_context=[model_ctx],
         )
 
         all_diffs = [d for intent in intents for d in intent.diffs]
@@ -60,12 +59,12 @@ class TestBoatBooking(unittest.TestCase):
         import json
         message = "Actually no, I've changed my mind about 40ft"
 
-        model_ctx = ModelContext(
-            model_class=json.dumps(BoatSpecEntity.model_json_schema()),
+        model_ctx = EntityContext(
+            entity_class_name=json.dumps(BoatSpecEntity.model_json_schema()),
         )
         intents = parse_mutation_intent_with_llm(
             input_text=message,
-            model_context=[model_ctx],
+            entity_context=[model_ctx],
             prior_interactions=[{'role': 'user', 'content': 'I want to book a 40ft catamaran'}]
         )
 
