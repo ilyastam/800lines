@@ -1,5 +1,5 @@
-from typing import Annotated
-from pydantic import BaseModel, Field
+from typing import Annotated, get_origin, get_args, Any
+from pydantic import BaseModel
 
 from agent.state.entity.state_entity import BaseStateEntity
 
@@ -21,10 +21,20 @@ class InputField:
 
 # base model with helper
 class BaseInput(BaseModel):
+    context: Any | None = None
 
-    context: list[dict[str, str]] = Field(default_factory=list)
+    def __init_subclass__(cls, **kwargs):
+        super().__init_subclass__(**kwargs)
+        has_input_field = False
+        for ann in cls.__annotations__.values():
+            if get_origin(ann) is Annotated:
+                args = get_args(ann)
+                if any(isinstance(arg, ExtractsTo) for arg in args):
+                    has_input_field = True
+                    break
+        if not has_input_field:
+            raise TypeError(f"{cls.__name__} must have at least one InputField")
 
-    # returns state entities this input model can extract to. 
     @classmethod
     def get_extracts_mapping(cls) -> dict[str, list[type[BaseStateEntity]]]:
         mapping: dict[str, list[type[BaseStateEntity]]] = {}

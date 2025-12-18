@@ -25,8 +25,7 @@ class BaseStateController:
         entities = self.storage.get_all()
         return bool(entities) and all(entity.is_completed() for entity in entities)
 
-    @staticmethod
-    def parse_mutation_intents(inputs: list[BaseInput]) -> list[MutationIntent]:
+    def parse_mutation_intents(self, inputs: list[BaseInput]) -> list[MutationIntent]:
         all_intents: list[MutationIntent] = []
 
         for _input in inputs:
@@ -47,13 +46,15 @@ class BaseStateController:
 
                 for parser, classes in classes_by_parser.items():
                     entity_contexts = [
-                        EntityContext(entity_class_name=json.dumps(cls.model_json_schema()))
-                        for cls in classes
+                        EntityContext(
+                            entity_class_name=json.dumps(cls.model_json_schema()),
+                            entity_refs=self.storage.get_entity_refs_for_class(cls)
+                        ) for cls in classes
                     ]
                     intents = parser.parse_mutation_intent(
                         input_field_value,
                         entity_contexts,
-                        prior_interactions=_input.context
+                        data_context=_input.context
                     )
                     all_intents.extend(intents)
 

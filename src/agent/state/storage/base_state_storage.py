@@ -12,6 +12,9 @@ class BaseStateStorage(ABC):
     def __init__(self):
         self.version = 0
 
+    def get_entity_refs_for_class(self, entity_class: type[BaseStateEntity]) -> list[str] | None:
+        return None
+
     @abstractmethod
     def apply_mutation_intents(self, intents: list[MutationIntent]) -> list[MutationIntent]:
         """

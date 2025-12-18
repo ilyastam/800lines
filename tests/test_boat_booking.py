@@ -47,7 +47,7 @@ class TestBoatBooking(unittest.TestCase):
         )
         intents = parse_mutation_intent_with_llm(
             input_text=message,
-            entity_context=[model_ctx],
+            entity_contexts=[model_ctx],
         )
 
         all_diffs = [d for intent in intents for d in intent.diffs]
@@ -64,8 +64,8 @@ class TestBoatBooking(unittest.TestCase):
         )
         intents = parse_mutation_intent_with_llm(
             input_text=message,
-            entity_context=[model_ctx],
-            prior_interactions=[{'role': 'user', 'content': 'I want to book a 40ft catamaran'}]
+            entity_contexts=[model_ctx],
+            context=[{'role': 'user', 'content': 'I want to book a 40ft catamaran'}]
         )
 
         all_diffs = [d for intent in intents for d in intent.diffs]
