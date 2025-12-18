@@ -1,7 +1,7 @@
 import json
 
 from agent.inputs import BaseInput
-from agent.parser.llm_parser import parse_mutation_intent_with_llm
+from agent.parser import BaseParser, get_parser_for_entity
 from agent.state.entity.state_entity import BaseStateEntity
 from agent.state import BaseStateStorage
 from agent.state.entity.types import FieldDiff, EntityContext, MutationIntent
@@ -30,23 +30,33 @@ class BaseStateController:
         all_intents: list[MutationIntent] = []
 
         for _input in inputs:
-            input_fields_to_state_models = _input.get_extracts_mapping()
-            for input_field_name, state_entity_classes in input_fields_to_state_models.items():
+            input_fields_to_state_entities = _input.get_extracts_mapping()
+            for input_field_name, state_entity_classes in input_fields_to_state_entities.items():
                 input_field_value = getattr(_input, input_field_name)
                 if not input_field_value:
                     continue
 
-                entity_contexts = [
-                    EntityContext(entity_class_name=json.dumps(cls.model_json_schema()))
-                    for cls in state_entity_classes
-                ]
+                classes_by_parser: dict[BaseParser, list[type[BaseStateEntity]]] = {}
+                for cls in state_entity_classes:
+                    parser = get_parser_for_entity(cls)
+                    if parser is None:
+                        raise ValueError(f"No parser registered for entity class {cls.__name__}")
+                    if parser not in classes_by_parser:
+                        classes_by_parser[parser] = []
+                    classes_by_parser[parser].append(cls)
 
-                intents = parse_mutation_intent_with_llm(
-                    input_field_value,
-                    entity_contexts,
-                    prior_interactions=_input.context
-                )
-                all_intents.extend(intents)
+                for parser, classes in classes_by_parser.items():
+                    entity_contexts = [
+                        EntityContext(entity_class_name=json.dumps(cls.model_json_schema()))
+                        for cls in classes
+                    ]
+                    intents = parser.parse_mutation_intent(
+                        input_field_value,
+                        entity_contexts,
+                        prior_interactions=_input.context
+                    )
+                    all_intents.extend(intents)
+
             return all_intents
 
     @staticmethod

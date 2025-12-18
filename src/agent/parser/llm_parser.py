@@ -1,10 +1,22 @@
 from typing import Any, Union
 from openai import OpenAI
 from pydantic import create_model
+
+from agent.parser.base_parser import BaseParser
 from agent.state.entity.llm_parsed_entity import LlmParsedStateEntity
 from agent.state.entity.types import EntityContext, MutationIntent, MutationIntents
 
 client = OpenAI()
+
+
+class LlmParser(BaseParser):
+    def parse_mutation_intent(
+        self,
+        input_text: str,
+        entity_contexts: list[EntityContext],
+        prior_interactions: list[dict[str, str]] | None = None
+    ) -> list[MutationIntent]:
+        return parse_mutation_intent_with_llm(input_text, entity_contexts, prior_interactions)
 
 
 def parse_state_models_with_llm(input_text: str,
@@ -54,4 +66,9 @@ def parse_mutation_intent_with_llm(input_text: str,
 
     event: MutationIntents = completion.choices[0].message.parsed
     return event.intents
+
+
+def register_llm_parser() -> None:
+    from agent.parser.parser_registry import register_parser
+    register_parser(LlmParsedStateEntity, LlmParser())
 
