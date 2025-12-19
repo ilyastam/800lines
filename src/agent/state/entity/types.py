@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -11,6 +12,7 @@ class EntityContext(BaseModel):
     upon user's request.
     """
     entity_class_name: str
+    entity_schema: dict[str, Any] | None = None
     entity_refs: list[str] | None = None
 
 

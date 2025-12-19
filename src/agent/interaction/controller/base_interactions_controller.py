@@ -3,9 +3,6 @@ from abc import ABC, abstractmethod
 from agent.interaction.base_interaction import BaseInteraction
 from agent.state.entity.state_entity import BaseStateEntity
 from agent.state.entity.types import MutationIntent
-from openai import OpenAI
-
-client = OpenAI()
 
 class BaseInteractionsController(ABC):
 

@@ -2,17 +2,19 @@ import json
 import textwrap
 
 from agent.interaction.llm_interaction import ChatInteraction
-from agent.interaction.controller.base_interactions_controller import BaseInteractionsController, client
+from agent.interaction.controller.base_interactions_controller import BaseInteractionsController
 from agent.state.controller.base_state_controller import BaseStateController
 from agent.state.entity.state_entity import BaseStateEntity
 from agent.state.entity.types import MutationIntent
+from openai import OpenAI
 
 
 class LlmChatInteractionsController(BaseInteractionsController):
 
-    def __init__(self, state_controller: BaseStateController):
+    def __init__(self, state_controller: BaseStateController, client: OpenAI | None = None):
         self.state_controller: BaseStateController = state_controller
         self.interactions: list[ChatInteraction] = []
+        self.client: OpenAI = client or OpenAI()
 
     def get_state_controller(self):
         return self.state_controller
@@ -77,7 +79,7 @@ class LlmChatInteractionsController(BaseInteractionsController):
         let them know that they need to check facts on their own.
         """)
 
-        completion = client.chat.completions.parse(
+        completion = self.client.chat.completions.parse(
             model="gpt-4o",
             messages=[{"role": "system", "content": prompt}] + [i.to_llm_message() for i in self.interactions]
         )

@@ -1,5 +1,3 @@
-import json
-
 from agent.inputs import BaseInput
 from agent.parser import BaseParser, get_parser_for_entity
 from agent.state.entity.state_entity import BaseStateEntity
@@ -47,7 +45,8 @@ class BaseStateController:
                 for parser, classes in classes_by_parser.items():
                     entity_contexts = [
                         EntityContext(
-                            entity_class_name=json.dumps(cls.model_json_schema()),
+                            entity_class_name=cls.__name__,
+                            entity_schema=cls.model_json_schema(),
                             entity_refs=self.storage.get_entity_refs_for_class(cls)
                         ) for cls in classes
                     ]
@@ -58,7 +57,7 @@ class BaseStateController:
                     )
                     all_intents.extend(intents)
 
-            return all_intents
+        return all_intents
 
     @staticmethod
     def _entities_to_intents(entities: list[BaseStateEntity]) -> list[MutationIntent]:
