@@ -8,10 +8,11 @@ from agent.parser.base_parser import BaseParser
 from agent.state.entity.llm_parsed_entity import LlmParsedStateEntity
 from agent.state.entity.types import EntityContext, MutationIntent, MutationIntents
 
-client = OpenAI()
-
 
 class LlmParser(BaseParser):
+    def __init__(self, client: OpenAI | None = None):
+        self.client: OpenAI = client or OpenAI()
+
     def parse_mutation_intent(
         self,
         input_text: str,
@@ -27,7 +28,7 @@ class LlmParser(BaseParser):
             {"role": "user", "content": input_text},
         ]
 
-        completion = client.chat.completions.parse(
+        completion = self.client.chat.completions.parse(
             model="gpt-4o",
             messages=messages,
             response_format=MutationIntents,
@@ -61,7 +62,8 @@ class LlmParser(BaseParser):
 
 def parse_state_models_with_llm(input_text: str,
                                 state_model_classes: list[type[LlmParsedStateEntity]],
-                                context: list[dict[str, str]] | None = None
+                                context: list[dict[str, str]] | None = None,
+                                client: OpenAI | None = None
                                 ) -> list[Any] | None:
     COMBINED_STATE_MODELS_SCHEMA = create_model(
         "COMBINED_STATE_MODELS_SCHEMA",
@@ -73,7 +75,9 @@ def parse_state_models_with_llm(input_text: str,
         {"role": "user", "content": input_text},
     ]
 
-    completion = client.chat.completions.parse(
+    llm_client = client or OpenAI()
+
+    completion = llm_client.chat.completions.parse(
         model="gpt-4o",
         messages=messages,
         response_format=COMBINED_STATE_MODELS_SCHEMA,
@@ -86,7 +90,8 @@ def parse_state_models_with_llm(input_text: str,
 
 def parse_mutation_intent_with_llm(input_text: str,
                                    entity_contexts: list[EntityContext],
-                                   context: list[dict[str, str]] | None = None
+                                   context: list[dict[str, str]] | None = None,
+                                   client: OpenAI | None = None
                                    ) -> list[MutationIntent]:
 
     combined_entity_ctx = "\n".join([mctx.model_dump_json() for mctx in entity_contexts])
@@ -97,7 +102,9 @@ def parse_mutation_intent_with_llm(input_text: str,
         {"role": "user", "content": input_text},
     ]
 
-    completion = client.chat.completions.parse(
+    llm_client = client or OpenAI()
+
+    completion = llm_client.chat.completions.parse(
         model="gpt-4o",
         messages=messages,
         response_format=MutationIntents,
