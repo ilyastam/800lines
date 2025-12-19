@@ -43,14 +43,12 @@ if __name__ == '__main__':
         wrapped_text = textwrap.fill(str(interaction), width=wrap_width)
         print(wrapped_text)
         message = input(">")
-        bb_input = BoatBookingInput(chat_message=message, context=[
-            {"role": "assistant", "content": str(interaction)},
-        ])
+        bb_input = BoatBookingInput(chat_message=message, context=[interaction])
 
     for model in state_controller.storage.get_all():
         print(model.model_dump())
 
 
-# TODO: do I need an agen class to tie together state controller and interactions controller ? - yes
+# TODO: do I need an agent class to tie together state controller and interactions controller ? - yes
 # think about how to implement channel dispatchers, and how to connect emit to terminal in basic and fancy scenario
 # test input contexts

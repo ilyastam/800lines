@@ -1,6 +1,7 @@
+import json
 from typing import Any, Union
 from openai import OpenAI
-from pydantic import create_model
+from pydantic import create_model, BaseModel
 
 from agent.interaction.llm_interaction import ChatInteraction
 from agent.parser.base_parser import BaseParser
@@ -15,11 +16,12 @@ class LlmParser(BaseParser):
         self,
         input_text: str,
         entity_contexts: list[EntityContext],
-        data_context: list[ChatInteraction] | None = None
+        intent_context: list[ChatInteraction | Any] | None = None
     ) -> list[MutationIntent]:
         combined_entity_ctx = "\n".join([mctx.model_dump_json() for mctx in entity_contexts])
+        _intent_context: list[dict[str, str]] = self._prepare_intent_context(intent_context)
 
-        messages = (data_context or []) + [
+        messages = _intent_context + [
             {"role": "system", "content": "Below is the description of data entities that user can modify (set or unset a field value). User may also say something unrelated to these entities. If user intends to modify model entities, capture and return their intent according to provided response schema. If the intent is to unset a field - return default value for this field according to schema."},
             {"role": "system", "content": combined_entity_ctx},
             {"role": "user", "content": input_text},
@@ -34,6 +36,27 @@ class LlmParser(BaseParser):
 
         event: MutationIntents = completion.choices[0].message.parsed
         return event.intents
+
+    @staticmethod
+    def _prepare_intent_context(intent_context: list[ChatInteraction | Any] | None = None) -> list[dict[str, str]]:
+        _intent_context: list[dict[str, str]] = []
+        for entity_context in (intent_context or []):
+            if isinstance(entity_context, ChatInteraction):
+                _intent_context.append(entity_context.to_llm_message())
+            elif isinstance(_intent_context, BaseModel):
+                _intent_context.append({"role": "system", "content": entity_context.model_dump_json()})
+            elif isinstance(entity_context, list) or isinstance(entity_context, dict):
+                try:
+                    _intent_context.append({"role": "system", "content": json.dumps(entity_context)})
+                except Exception as e:
+                    pass
+            elif entity_context:
+                try:
+                    _intent_context.append({"role": "system", "content": str(entity_context)})
+                except Exception as e:
+                    pass
+
+        return _intent_context
 
 
 def parse_state_models_with_llm(input_text: str,

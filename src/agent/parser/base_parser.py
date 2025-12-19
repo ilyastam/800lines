@@ -10,6 +10,6 @@ class BaseParser(ABC):
         self,
         input_text: str,
         entity_contexts: list[EntityContext],
-        data_context: Any | None = None
+        intent_context: Any | None = None
     ) -> list[MutationIntent]:
         pass

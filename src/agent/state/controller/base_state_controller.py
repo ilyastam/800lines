@@ -54,7 +54,7 @@ class BaseStateController:
                     intents = parser.parse_mutation_intent(
                         input_field_value,
                         entity_contexts,
-                        data_context=_input.context
+                        intent_context=_input.context
                     )
                     all_intents.extend(intents)
 
