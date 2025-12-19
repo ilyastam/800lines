@@ -1,9 +1,9 @@
-import textwrap
 import json
 import shutil
 
 from pydantic import BaseModel
 
+from agent.interaction.channel import ChannelDispatcher, TerminalChannelConnector
 from agent.interaction.controller.llm_chat_interactions_controller import LlmChatInteractionsController
 from agent.interaction.llm_interaction import ChatInteraction
 from agent.state.controller.base_state_controller import BaseStateController
@@ -30,6 +30,9 @@ if __name__ == '__main__':
         entity_classes=[DesiredLocationEntity, BoatSpecEntity, DatesAndDurationEntity]
     ))
     interactions_controller = LlmChatInteractionsController(state_controller=state_controller)
+    channel_dispatcher = ChannelDispatcher([
+        TerminalChannelConnector(wrap_width=wrap_width)
+    ])
 
     while True:
         interactions_controller.record_interaction(ChatInteraction(role='user', content=message))
@@ -40,8 +43,7 @@ if __name__ == '__main__':
         interactions = interactions_controller.generate_interactions(changes)
         interaction = interactions[0]
         interactions_controller.record_interaction(interaction)
-        wrapped_text = textwrap.fill(str(interaction), width=wrap_width)
-        print(wrapped_text)
+        channel_dispatcher.dispatch([interaction])
         message = input(">")
         bb_input = BoatBookingInput(chat_message=message, context=[interaction])
 
