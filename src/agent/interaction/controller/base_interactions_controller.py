@@ -1,8 +1,10 @@
 from abc import ABC, abstractmethod
 
+from agent.inputs import BaseInput
 from agent.interaction.base_interaction import BaseInteraction
 from agent.state.entity.state_entity import BaseStateEntity
 from agent.state.entity.types import MutationIntent
+
 
 class BaseInteractionsController(ABC):
 
@@ -20,4 +22,8 @@ class BaseInteractionsController(ABC):
 
     @abstractmethod
     def record_interaction(self, interaction: BaseInteraction):
+        pass
+
+    @abstractmethod
+    def record_input(self, input: BaseInput):
         pass

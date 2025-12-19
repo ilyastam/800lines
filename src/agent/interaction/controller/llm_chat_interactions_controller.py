@@ -1,6 +1,7 @@
 import json
 import textwrap
 
+from agent.inputs import BaseInput
 from agent.interaction.llm_interaction import ChatInteraction
 from agent.interaction.controller.base_interactions_controller import BaseInteractionsController
 from agent.state.controller.base_state_controller import BaseStateController
@@ -22,6 +23,9 @@ class LlmChatInteractionsController(BaseInteractionsController):
     def record_interaction(self, interaction_object: ChatInteraction):
         self.interactions.append(interaction_object)
 
+    def record_input(self, input: BaseInput):
+        pass
+
     def generate_interactions(self, intents: list[MutationIntent]) -> list[ChatInteraction]:
         entities: list[BaseStateEntity] = self.get_state_controller().storage.get_all()
 
@@ -39,6 +43,7 @@ class LlmChatInteractionsController(BaseInteractionsController):
         for entity in incomplete_entities:
             entity_class_name = entity.__class__.__name__
             intent = intents_by_class_name.get(entity_class_name)
+            # TODO: implement limit of interactions per channel
             interaction = self.generate_interaction(entity, intent)
             interactions.append(interaction)
 

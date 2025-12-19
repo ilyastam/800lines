@@ -5,5 +5,5 @@ from pydantic import Field
 
 
 class BoatBookingInput(BaseInput):
-    chat_message: InputField[str | None, DesiredLocationEntity, BoatSpecEntity, DatesAndDurationEntity] = None
+    input_value: InputField[str | None, DesiredLocationEntity, BoatSpecEntity, DatesAndDurationEntity] = None
     context: list[ChatInteraction] = Field(default_factory=list)

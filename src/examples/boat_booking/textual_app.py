@@ -187,7 +187,7 @@ class BoatBookingTUI(App):
                         "content": str(interaction.get("content", "")),
                     })
 
-        return BoatBookingInput(chat_message=message, context=context)
+        return BoatBookingInput(input_value=message, context=context)
 
     def action_clear_logs(self) -> None:
         logs_pane = self.query_one("#logs-pane", RichLog)

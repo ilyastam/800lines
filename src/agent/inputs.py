@@ -22,6 +22,7 @@ class InputField:
 # base model with helper
 class BaseInput(BaseModel):
     context: Any | None = None
+    input_value: InputField | None = None
 
     def __init_subclass__(cls, **kwargs):
         super().__init_subclass__(**kwargs)

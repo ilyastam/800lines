@@ -3,6 +3,7 @@ import shutil
 
 from pydantic import BaseModel
 
+from agent.base_agent import BaseAgent
 from agent.interaction.channel import ChannelDispatcher, TerminalChannelConnector
 from agent.interaction.controller.llm_chat_interactions_controller import LlmChatInteractionsController
 from agent.interaction.llm_interaction import ChatInteraction
@@ -24,7 +25,7 @@ if __name__ == '__main__':
     wrap_width = int(terminal_width * 0.8)
 
     message = "I want to book a 40 ft catamaran in Split Croatia for July 10th, 2026"
-    bb_input = BoatBookingInput(chat_message=message)
+    bb_input = BoatBookingInput(input_value=message)
 
     state_controller = BaseStateController(storage=OneEntityPerTypeStorage(
         entity_classes=[DesiredLocationEntity, BoatSpecEntity, DatesAndDurationEntity]
@@ -34,7 +35,13 @@ if __name__ == '__main__':
         TerminalChannelConnector(wrap_width=wrap_width)
     ])
 
-    while True:
+    agent = BaseAgent(
+        state_controller=state_controller,
+        interactions_controller=interactions_controller,
+        channel_dispatcher=channel_dispatcher
+    )
+
+    while not agent.is_done():
         interactions_controller.record_interaction(ChatInteraction(role='user', content=message))
         changes = state_controller.update_state([bb_input])
         if state_controller.is_state_completed():
@@ -45,7 +52,7 @@ if __name__ == '__main__':
         interactions_controller.record_interaction(interaction)
         channel_dispatcher.dispatch([interaction])
         message = input(">")
-        bb_input = BoatBookingInput(chat_message=message, context=[interaction])
+        bb_input = BoatBookingInput(input_value=message, context=[interaction])
 
     for model in state_controller.storage.get_all():
         print(model.model_dump())

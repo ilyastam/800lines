@@ -8,7 +8,7 @@ from agent.state.controller.base_state_controller import BaseStateController
 from agent.state.entity.types import MutationIntent
 
 
-class BaseAgent():
+class BaseAgent:
 
     def __init__(self,
                  state_controller: BaseStateController,
@@ -28,5 +28,13 @@ class BaseAgent():
             return
 
         self.channel_dispatcher.dispatch(interactions)
+
+    def run_cycle(self, inputs: list[BaseInput]):
+        interactions: list[BaseInteraction] = self.consume_inputs(inputs)
+        self.emit_interactions(interactions)
+        return self.state_controller.is_state_completed()
+
+    def is_done(self) -> bool:
+        return self.state_controller.is_state_completed()
 
 

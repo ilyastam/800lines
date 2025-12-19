@@ -15,7 +15,7 @@ class TestBoatBooking(unittest.TestCase):
         terminal_width = shutil.get_terminal_size().columns
         wrap_width = int(terminal_width * 0.8)
         message = "I want to book a 40 ft catamaran in Split Croatia for July 10th, 2026"
-        bb_input = BoatBookingInput(chat_message=message)
+        bb_input = BoatBookingInput(input_value=message)
 
         state_controller = BaseStateController(storage=BBStateStorage())
         interactions_controller = LlmChatInteractionsController(state_controller=state_controller)
@@ -29,7 +29,7 @@ class TestBoatBooking(unittest.TestCase):
 
         unset_field_message = "No actually I changed my mind about 40ft"
 
-        bb_input = BoatBookingInput(chat_message=unset_field_message, context=[
+        bb_input = BoatBookingInput(input_value=unset_field_message, context=[
             {"role": "assistant", "content": str(interaction)},
         ])
 
