@@ -15,8 +15,8 @@ class BaseChannel(BaseModel):
 
     channel_domain: str
     channel_id: str
-    input_context: dict[str, str] = Field(default_factory=dict)
-    output_context: dict[str, str] = Field(default_factory=dict)
+    input_context: tuple[tuple[str, str], ...] = Field(default_factory=tuple)
+    output_context: tuple[tuple[str, str], ...] = Field(default_factory=tuple)
     description: str | None = None
 
     def create_interaction(self, role: str, content: str) -> "BaseInteraction":
@@ -32,8 +32,8 @@ class TerminalChannel(BaseChannel):
         super().__init__(
             channel_domain="terminal",
             channel_id=channel_id or "terminal",
-            input_context={},
-            output_context={},
+            input_context=(),
+            output_context=(),
             description="Local terminal session",
         )
 

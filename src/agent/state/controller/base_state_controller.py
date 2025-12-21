@@ -31,35 +31,33 @@ class BaseStateController:
         all_intents: list[MutationIntent] = []
 
         for _input in inputs:
-            input_fields_to_state_entities = _input.get_extracts_mapping()
-            for input_field_name, state_entity_classes in input_fields_to_state_entities.items():
-                input_field_value = getattr(_input, input_field_name)
-                if not input_field_value:
-                    continue
+            if not _input.input_value:
+                continue
 
-                classes_by_parser: dict[BaseParser, list[type[BaseStateEntity]]] = {}
-                for cls in state_entity_classes:
-                    parser = self._get_parser_for_entity_and_channel(cls, _input.channel)
-                    if parser is None:
-                        raise ValueError(f"No parser registered for entity class {cls.__name__}")
-                    if parser not in classes_by_parser:
-                        classes_by_parser[parser] = []
-                    classes_by_parser[parser].append(cls)
+            state_entity_classes = list(_input.extracts_to)
+            classes_by_parser: dict[BaseParser, list[type[BaseStateEntity]]] = {}
+            for cls in state_entity_classes:
+                parser = self._get_parser_for_entity_and_channel(cls, _input.channel)
+                if parser is None:
+                    raise ValueError(f"No parser registered for entity class {cls.__name__}")
+                if parser not in classes_by_parser:
+                    classes_by_parser[parser] = []
+                classes_by_parser[parser].append(cls)
 
-                for parser, classes in classes_by_parser.items():
-                    entity_contexts = [
-                        EntityContext(
-                            entity_class_name=cls.__name__,
-                            entity_schema=cls.model_json_schema(),
-                            entity_refs=self.storage.get_entity_refs_for_class(cls)
-                        ) for cls in classes
-                    ]
-                    intents = parser.parse_mutation_intent(
-                        input_field_value,
-                        entity_contexts,
-                        intent_context=_input.context
-                    )
-                    all_intents.extend(intents)
+            for parser, classes in classes_by_parser.items():
+                entity_contexts = [
+                    EntityContext(
+                        entity_class_name=cls.__name__,
+                        entity_schema=cls.model_json_schema(),
+                        entity_refs=self.storage.get_entity_refs_for_class(cls)
+                    ) for cls in classes
+                ]
+                intents = parser.parse_mutation_intent(
+                    _input.input_value,
+                    entity_contexts,
+                    intent_context=_input.context
+                )
+                all_intents.extend(intents)
 
         return all_intents
 
