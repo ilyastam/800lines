@@ -1,4 +1,5 @@
 from agent.inputs import BaseInput
+from agent.interaction.channel.channel import BaseChannel
 from agent.parser import BaseParser, get_parser_for_entity
 from agent.state.entity.state_entity import BaseStateEntity
 from agent.state import BaseStateStorage
@@ -6,7 +7,10 @@ from agent.state.entity.types import FieldDiff, EntityContext, MutationIntent
 
 
 class BaseStateController:
-    def __init__(self, storage: BaseStateStorage | None = None):
+    def __init__(
+        self,
+        storage: BaseStateStorage | None = None,
+    ):
         """
         Initialize the state controller.
 
@@ -35,7 +39,7 @@ class BaseStateController:
 
                 classes_by_parser: dict[BaseParser, list[type[BaseStateEntity]]] = {}
                 for cls in state_entity_classes:
-                    parser = get_parser_for_entity(cls)
+                    parser = self._get_parser_for_entity_and_channel(cls, _input.channel)
                     if parser is None:
                         raise ValueError(f"No parser registered for entity class {cls.__name__}")
                     if parser not in classes_by_parser:
@@ -58,6 +62,11 @@ class BaseStateController:
                     all_intents.extend(intents)
 
         return all_intents
+
+    def _get_parser_for_entity_and_channel(
+        self, entity_cls: type[BaseStateEntity], channel: BaseChannel
+    ) -> BaseParser | None:
+        return get_parser_for_entity(entity_cls, channel.channel_domain)
 
     @staticmethod
     def _entities_to_intents(entities: list[BaseStateEntity]) -> list[MutationIntent]:

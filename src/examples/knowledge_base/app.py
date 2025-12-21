@@ -1,15 +1,23 @@
+from agent.interaction.channel import BaseChannel
 from agent.state.controller.base_state_controller import BaseStateController
 from examples.knowledge_base.input import KbInput
 
 
 if __name__ == '__main__':
+    kb_channel = BaseChannel(
+        channel_domain="knowledge-base",
+        channel_id="kb-demo",
+        input_context={"source": "demo"},
+        output_context={},
+    )
+    KbInput.channel = kb_channel
     kb_input = KbInput(
-        call_transcript="We decided to use mysql, Jack will handle the install. We also agreed to have pizza for lunch."
+        call_transcript="We decided to use mysql, Jack will handle the install. We also agreed to have pizza for lunch.",
     )
 
     bsc = BaseStateController()
 
     print(kb_input.get_extracts_mapping())
-    bsc.update_state(kb_input)
+    bsc.update_state([kb_input])
 
     #Next: parse state entities from input

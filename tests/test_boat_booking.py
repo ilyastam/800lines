@@ -1,7 +1,9 @@
 import shutil
 import unittest
 
+from agent.interaction.channel import TerminalChannel
 from agent.interaction.controller.llm_chat_interactions_controller import LlmChatInteractionsController
+from agent.interaction.llm_interaction import ChatInteraction
 from agent.parser.llm_parser import parse_mutation_intent_with_llm
 from agent.state.entity.types import EntityContext
 from agent.state.controller.base_state_controller import BaseStateController
@@ -15,26 +17,38 @@ class TestBoatBooking(unittest.TestCase):
         terminal_width = shutil.get_terminal_size().columns
         wrap_width = int(terminal_width * 0.8)
         message = "I want to book a 40 ft catamaran in Split Croatia for July 10th, 2026"
+        terminal_channel = TerminalChannel()
+        BoatBookingInput.channel = terminal_channel
         bb_input = BoatBookingInput(input_value=message)
 
         state_controller = BaseStateController(storage=BBStateStorage())
-        interactions_controller = LlmChatInteractionsController(state_controller=state_controller)
+        interactions_controller = LlmChatInteractionsController(
+            state_controller=state_controller,
+            input_channels={terminal_channel},
+            output_channel=terminal_channel,
+        )
 
-        interactions_controller.record_interaction({'role': 'user', 'content': message})
-        changes = state_controller.update_state(bb_input)
+        interactions_controller.record_interaction(
+            ChatInteraction(role='user', content=message, channel=terminal_channel)
+        )
+        changes = state_controller.update_state([bb_input])
 
         interactions = interactions_controller.generate_interactions(changes)
         interaction = interactions[0]
-        interactions_controller.record_interaction({'role': 'assistant', 'content': interaction})
+        interactions_controller.record_interaction(
+            ChatInteraction(role='assistant', content=interaction.content, channel=terminal_channel)
+        )
 
         unset_field_message = "No actually I changed my mind about 40ft"
 
         bb_input = BoatBookingInput(input_value=unset_field_message, context=[
-            {"role": "assistant", "content": str(interaction)},
+            ChatInteraction(role="assistant", content=str(interaction.content), channel=terminal_channel),
         ])
 
-        interactions_controller.record_interaction({'role': 'user', 'content': message})
-        changes = state_controller.update_state(bb_input)
+        interactions_controller.record_interaction(
+            ChatInteraction(role='user', content=message, channel=terminal_channel)
+        )
+        changes = state_controller.update_state([bb_input])
 
         pass
 

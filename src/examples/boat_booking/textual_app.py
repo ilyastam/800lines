@@ -8,7 +8,9 @@ from textual.widgets import Header, Footer, Input, Static, RichLog
 from textual.binding import Binding
 from textual import work
 
+from agent.interaction.channel import TerminalChannel
 from agent.interaction.controller.llm_chat_interactions_controller import LlmChatInteractionsController
+from agent.interaction.llm_interaction import ChatInteraction
 from agent.state.controller.base_state_controller import BaseStateController
 from agent.state.entity.types import MutationIntent
 from examples.boat_booking.bb_state_storage import BBStateStorage
@@ -62,9 +64,13 @@ class BoatBookingTUI(App):
 
     def __init__(self) -> None:
         super().__init__()
+        self.channel = TerminalChannel(channel_id="boat-booking-textual")
+        BoatBookingInput.channel = self.channel
         self.state_controller = BaseStateController(storage=BBStateStorage())
         self.interactions_controller = LlmChatInteractionsController(
-            state_controller=self.state_controller
+            state_controller=self.state_controller,
+            input_channels={self.channel},
+            output_channel=self.channel,
         )
 
     def compose(self) -> ComposeResult:
@@ -96,13 +102,9 @@ class BoatBookingTUI(App):
 
         bb_input = self._build_input(message)
 
-        self.interactions_controller.record_interaction({
-            "role": "user",
-            "content": message,
-        })
-
         with redirect_stdout(captured_output):
-            changes = self.state_controller.update_state(bb_input)
+            self.interactions_controller.record_input(bb_input)
+            changes = self.state_controller.update_state([bb_input])
 
         self.call_from_thread(self.log_state_changes, changes)
 
@@ -119,11 +121,8 @@ class BoatBookingTUI(App):
 
         if interactions:
             interaction = interactions[0]
-            self.interactions_controller.record_interaction({
-                "role": "assistant",
-                "content": interaction,
-            })
-            self.call_from_thread(self.add_chat_message, str(interaction), False)
+            self.interactions_controller.record_interaction(interaction)
+            self.call_from_thread(self.add_chat_message, str(interaction.content), False)
 
     def add_chat_message(self, content: str, is_user: bool) -> None:
         chat_pane = self.query_one("#chat-pane", VerticalScroll)
@@ -177,15 +176,12 @@ class BoatBookingTUI(App):
         input_widget.disabled = True
 
     def _build_input(self, message: str) -> BoatBookingInput:
-        context: list[dict[str, str]] = []
+        context: list[ChatInteraction] = []
         if self.interactions_controller.interactions:
             last_interactions = self.interactions_controller.interactions[-2:]
             for interaction in last_interactions:
-                if interaction.get("role") == "assistant":
-                    context.append({
-                        "role": "assistant",
-                        "content": str(interaction.get("content", "")),
-                    })
+                if isinstance(interaction, ChatInteraction) and interaction.role == "assistant":
+                    context.append(interaction)
 
         return BoatBookingInput(input_value=message, context=context)
 
