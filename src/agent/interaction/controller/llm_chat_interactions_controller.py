@@ -2,6 +2,7 @@ import json
 import textwrap
 
 from agent.inputs import BaseInput
+from agent.interaction.channel.channel import BaseChannel
 from agent.interaction.llm_interaction import ChatInteraction
 from agent.interaction.controller.base_interactions_controller import BaseInteractionsController
 from agent.state.controller.base_state_controller import BaseStateController
@@ -12,15 +13,26 @@ from openai import OpenAI
 
 class LlmChatInteractionsController(BaseInteractionsController):
 
-    def __init__(self, state_controller: BaseStateController, client: OpenAI | None = None):
+    def __init__(
+        self,
+        state_controller: BaseStateController,
+        client: OpenAI | None = None,
+        input_channels: set[BaseChannel] | None = None,
+        output_channel: BaseChannel | None = None,
+    ):
         self.state_controller: BaseStateController = state_controller
         self.interactions: list[ChatInteraction] = []
         self.client: OpenAI = client or OpenAI()
 
+        if output_channel is None:
+            raise ValueError("An output channel must be provided to initialize the controller")
+
+        super().__init__(input_channels=input_channels or set(), output_channel=output_channel)
+
     def get_state_controller(self):
         return self.state_controller
 
-    def record_interaction(self, interaction_object: ChatInteraction):
+    def _record_interaction(self, interaction_object: ChatInteraction):
         self.interactions.append(interaction_object)
 
     def record_input(self, input: BaseInput):
@@ -90,4 +102,4 @@ class LlmChatInteractionsController(BaseInteractionsController):
         )
 
         content = completion.choices[0].message.content
-        return ChatInteraction(role='assistant', content=content)
+        return self.output_channel.create_interaction(role='assistant', content=content)

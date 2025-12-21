@@ -4,9 +4,8 @@ import shutil
 from pydantic import BaseModel
 
 from agent.base_agent import BaseAgent
-from agent.interaction.channel import ChannelDispatcher, TerminalChannelConnector
+from agent.interaction.channel import ChannelDispatcher, TerminalChannel, TerminalChannelConnector
 from agent.interaction.controller.llm_chat_interactions_controller import LlmChatInteractionsController
-from agent.interaction.llm_interaction import ChatInteraction
 from agent.state.controller.base_state_controller import BaseStateController
 from agent.state.storage.one_entity_per_type_storage import OneEntityPerTypeStorage
 from examples.boat_booking.input import BoatBookingInput
@@ -24,15 +23,20 @@ if __name__ == '__main__':
     terminal_width = shutil.get_terminal_size().columns
     wrap_width = int(terminal_width * 0.8)
 
+    terminal_channel = BoatBookingInput.channel
     message = "I want to book a 40 ft catamaran in Split Croatia for July 10th, 2026"
     bb_input = BoatBookingInput(input_value=message)
 
     state_controller = BaseStateController(storage=OneEntityPerTypeStorage(
         entity_classes=[DesiredLocationEntity, BoatSpecEntity, DatesAndDurationEntity]
     ))
-    interactions_controller = LlmChatInteractionsController(state_controller=state_controller)
+    interactions_controller = LlmChatInteractionsController(
+        state_controller=state_controller,
+        input_channels={terminal_channel},
+        output_channel=terminal_channel,
+    )
     channel_dispatcher = ChannelDispatcher([
-        TerminalChannelConnector(wrap_width=wrap_width)
+        TerminalChannelConnector(wrap_width=wrap_width, channel=terminal_channel)
     ])
 
     agent = BaseAgent(
@@ -42,8 +46,8 @@ if __name__ == '__main__':
     )
 
     while not agent.is_done():
-        interactions_controller.record_interaction(ChatInteraction(role='user', content=message))
         changes = state_controller.update_state([bb_input])
+        interactions_controller.record_input(bb_input)
         if state_controller.is_state_completed():
             print("We are done here")
             break

@@ -1,12 +1,13 @@
-from typing import Annotated, get_origin, get_args, Any
+from typing import Annotated, ClassVar, get_origin, get_args, Any
 from pydantic import BaseModel
 
+from agent.interaction.channel.channel import BaseChannel
 from agent.state.entity.state_entity import BaseStateEntity
 
 
 # marker
 class ExtractsTo:
-    def __init__(self, *entities): 
+    def __init__(self, *entities):
         self.entities = entities
 
 
@@ -21,11 +22,21 @@ class InputField:
 
 # base model with helper
 class BaseInput(BaseModel):
+    channel: ClassVar[BaseChannel]
     context: Any | None = None
     input_value: InputField | None = None
 
     def __init_subclass__(cls, **kwargs):
         super().__init_subclass__(**kwargs)
+        if "channel" not in cls.__dict__:
+            raise TypeError(f"{cls.__name__} must define a class-level 'channel'")
+
+        channel_value = cls.__dict__["channel"]
+        if not isinstance(channel_value, BaseChannel):
+            raise TypeError(
+                f"{cls.__name__}.channel must be set to a BaseChannel instance at class definition time"
+            )
+
         has_input_field = False
         for ann in cls.__annotations__.values():
             if get_origin(ann) is Annotated:

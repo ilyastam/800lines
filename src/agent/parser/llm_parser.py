@@ -10,7 +10,16 @@ from agent.state.entity.types import EntityContext, MutationIntent, MutationInte
 
 
 class LlmParser(BaseParser):
-    def __init__(self, client: OpenAI | None = None):
+    def __init__(
+        self,
+        client: OpenAI | None = None,
+        entity_classes: list[type[LlmParsedStateEntity]] | None = None,
+        channel_domains: list[str | None] | None = None,
+    ):
+        super().__init__(
+            entity_classes=entity_classes or [LlmParsedStateEntity],
+            channel_domains=channel_domains or [None],
+        )
         self.client: OpenAI = client or OpenAI()
 
     def parse_mutation_intent(
@@ -115,7 +124,12 @@ def parse_mutation_intent_with_llm(input_text: str,
     return event.intents
 
 
-def register_llm_parser() -> None:
+def register_llm_parser(channel_domain: str | None = None) -> None:
     from agent.parser.parser_registry import register_parser
-    register_parser(LlmParsedStateEntity, LlmParser())
+
+    register_parser(
+        LlmParser(
+            channel_domains=[channel_domain] if channel_domain is not None else [None]
+        )
+    )
 

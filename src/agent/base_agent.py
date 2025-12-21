@@ -19,7 +19,15 @@ class BaseAgent:
         self.channel_dispatcher = channel_dispatcher
 
     def consume_inputs(self, inputs: list[BaseInput]) -> list[BaseInteraction]: # tuple[ObjectiveStatus, list[Interaction]]:
-        changes: list[MutationIntent] = self.state_controller.update_state(inputs)
+        filtered_inputs: list[BaseInput] = []
+        for input_obj in inputs:
+            if input_obj.channel not in self.interactions_controller.input_channels:
+                continue
+
+            self.interactions_controller.record_input(input_obj)
+            filtered_inputs.append(input_obj)
+
+        changes: list[MutationIntent] = self.state_controller.update_state(filtered_inputs)
         interactions = self.interactions_controller.generate_interactions(changes)
         return interactions
 

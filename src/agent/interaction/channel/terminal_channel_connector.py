@@ -4,14 +4,16 @@ import shutil
 import textwrap
 
 from agent.interaction.channel.base_channel_connector import BaseChannelConnector
+from agent.interaction.channel.channel import TerminalChannel
 from agent.interaction.llm_interaction import ChatInteraction
 
 
 class TerminalChannelConnector(BaseChannelConnector):
     """Simple connector that writes interactions to the terminal."""
 
-    def __init__(self, wrap_width: int | None = None):
-        super().__init__({ChatInteraction})
+    def __init__(self, wrap_width: int | None = None, channel: TerminalChannel | None = None):
+        channel = channel or TerminalChannel()
+        super().__init__({ChatInteraction}, channel)
         self.wrap_width = wrap_width
 
     def emit(self, interaction: ChatInteraction):
