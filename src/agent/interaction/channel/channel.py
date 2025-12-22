@@ -6,7 +6,6 @@ from pydantic import BaseModel, ConfigDict, Field
 
 if TYPE_CHECKING:
     from agent.interaction.base_interaction import BaseInteraction
-    from agent.state.entity.actor.base_actor import BaseActor
 
 
 class BaseChannel(BaseModel):
