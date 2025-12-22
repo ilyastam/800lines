@@ -1,8 +1,10 @@
 from typing import Any, ClassVar
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from agent.interaction.channel.channel import BaseChannel
+from agent.state.entity.actor.base_actor import BaseActor
+from agent.state.entity.actor.default_actor import DefaultActor
 
 
 class BaseInteraction(BaseModel):
@@ -10,6 +12,7 @@ class BaseInteraction(BaseModel):
 
     content: Any
     channel_instance: BaseChannel | None = None
+    actor: BaseActor = Field(default_factory=DefaultActor)
 
     def __init_subclass__(cls, **kwargs):
         super().__init_subclass__(**kwargs)

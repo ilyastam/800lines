@@ -8,6 +8,7 @@ from agent.interaction.channel import ChannelDispatcher, TerminalChannel, Termin
 from agent.interaction.controller.llm_chat_interactions_controller import LlmChatInteractionsController
 from agent.state.controller.base_state_controller import BaseStateController
 from agent.state.storage.one_entity_per_type_storage import OneEntityPerTypeStorage
+from examples.boat_booking.actor import CustomerActor
 from examples.boat_booking.input import BoatBookingInput
 from examples.boat_booking.state_entity import DesiredLocationEntity, BoatSpecEntity, DatesAndDurationEntity
 
@@ -24,8 +25,9 @@ if __name__ == '__main__':
     wrap_width = int(terminal_width * 0.8)
 
     terminal_channel = BoatBookingInput.channel
+    customer = CustomerActor(id='customer-001', name='John Doe', email='john@example.com')
     message = "I want to book a 40 ft catamaran in Split Croatia for July 10th, 2026"
-    bb_input = BoatBookingInput(input_value=message)
+    bb_input = BoatBookingInput(input_value=message, actor=customer)
 
     state_controller = BaseStateController(storage=OneEntityPerTypeStorage(
         entity_classes=[DesiredLocationEntity, BoatSpecEntity, DatesAndDurationEntity]
@@ -56,10 +58,11 @@ if __name__ == '__main__':
         interactions_controller.record_interaction(interaction)
         channel_dispatcher.dispatch([interaction])
         message = input(">")
-        bb_input = BoatBookingInput(input_value=message, context=[interaction])
+        bb_input = BoatBookingInput(input_value=message, context=[interaction], actor=customer)
 
-    for model in state_controller.storage.get_all():
-        print(model.model_dump())
+    for entity in state_controller.storage.get_all():
+        print(f"{type(entity).__name__}: {entity.content.model_dump()}")
+        print(f"  Actors: {[actor.model_dump() for actor in entity.actors]}")
 
 
 # TODO: do I need an agent class to tie together state controller and interactions controller ? - yes

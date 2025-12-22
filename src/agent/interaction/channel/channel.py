@@ -6,6 +6,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 if TYPE_CHECKING:
     from agent.interaction.base_interaction import BaseInteraction
+    from agent.state.entity.actor.base_actor import BaseActor
 
 
 class BaseChannel(BaseModel):
@@ -19,7 +20,7 @@ class BaseChannel(BaseModel):
     output_context: tuple[tuple[str, str], ...] = Field(default_factory=tuple)
     description: str | None = None
 
-    def create_interaction(self, role: str, content: str) -> "BaseInteraction":
+    def create_interaction(self, role: str, content: str, actor: "BaseActor | None" = None) -> "BaseInteraction":
         """Create a channel-bound interaction instance."""
 
         raise NotImplementedError("BaseChannel must define create_interaction")
@@ -37,7 +38,9 @@ class TerminalChannel(BaseChannel):
             description="Local terminal session",
         )
 
-    def create_interaction(self, role: str, content: str) -> "BaseInteraction":
+    def create_interaction(self, role: str, content: str, actor: "BaseActor | None" = None) -> "BaseInteraction":
         from agent.interaction.llm_interaction import ChatInteraction
 
-        return ChatInteraction(role=role, content=content, channel_instance=self)
+        if actor is None:
+            return ChatInteraction(role=role, content=content, channel_instance=self)
+        return ChatInteraction(role=role, content=content, channel_instance=self, actor=actor)

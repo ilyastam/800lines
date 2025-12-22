@@ -3,6 +3,8 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
+from agent.state.entity.actor.base_actor import BaseActor
+
 Primitive = str | int | float | bool | datetime | None
 
 
@@ -26,6 +28,7 @@ class MutationIntent(BaseModel):
     entity_ref: str | None = Field(default=None, description="Reference to the specific entity that user intends to mutate. Can be None.")
     diffs: list[FieldDiff] = Field(description="List of field changes")
     validation_errors: list[str] = Field(default_factory=list, description="Validation errors encountered during merge")
+    actor: BaseActor | None = Field(default=None, description="Actor who initiated this mutation")
 
 
 class MutationIntents(BaseModel):

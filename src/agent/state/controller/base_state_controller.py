@@ -57,6 +57,8 @@ class BaseStateController:
                     entity_contexts,
                     intent_context=_input.context
                 )
+                for intent in intents:
+                    intent.actor = _input.actor
                 all_intents.extend(intents)
 
         return all_intents

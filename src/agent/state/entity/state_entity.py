@@ -6,6 +6,7 @@ from enum import Enum
 from typing import Generic, TypeVar
 from pydantic import BaseModel, Field
 
+from agent.state.entity.actor.base_actor import BaseActor
 from agent.state.entity.types import MutationIntent, FieldDiff
 
 ContentType = TypeVar("ContentType")
@@ -31,6 +32,7 @@ class BaseStateEntity(BaseModel, Generic[ContentType]):
     content: ContentType
     date_created_utc: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), exclude=True)
     embedding: list[float] | None = Field(default=None, exclude=True)
+    actors: list[BaseActor] = Field(default_factory=list, exclude=True)
 
     def is_completable(self):
         return isinstance(self.content, Completable)
@@ -42,6 +44,12 @@ class BaseStateEntity(BaseModel, Generic[ContentType]):
         update_dict = {diff.field_name: diff.new_value for diff in diffs}
         self.content = self.content.model_copy(update=update_dict)
         return self
+
+    def _add_actor(self, actor: BaseActor | None) -> None:
+        if actor is None:
+            return
+        if not any(existing.id == actor.id for existing in self.actors):
+            self.actors.append(actor)
 
     @classmethod
     def merge(cls, current: 'BaseStateEntity' | None,
@@ -58,10 +66,13 @@ class BaseStateEntity(BaseModel, Generic[ContentType]):
                     return current, intent_with_errors.model_copy(update={"diffs": []})
 
         if current:
-            return current.update_content(intent.diffs), intent
+            current.update_content(intent.diffs)
+            current._add_actor(intent.actor)
+            return current, intent
 
         update_dict = {diff.field_name: diff.new_value for diff in intent.diffs}
         new_entity = cls(content=cls.model_fields['content'].annotation(**update_dict))
+        new_entity._add_actor(intent.actor)
         return new_entity, intent
 
     def validate_before_merge(self, intent: MutationIntent) -> list[str]:
