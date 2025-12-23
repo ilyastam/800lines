@@ -1,5 +1,5 @@
 from agent.state.controller.base_state_controller import BaseStateController
-from agent.inputs import BaseInput
+from agent.interaction.base_input import BaseInput
 
 
 class KbStateController(BaseStateController):

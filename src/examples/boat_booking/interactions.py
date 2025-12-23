@@ -1,7 +1,9 @@
-from agent.state_storage.interaction import BaseInteraction
+from typing import ClassVar
+
+from agent.interaction.base_output import BaseOutput
+from agent.interaction.channel import TerminalChannel
 
 
-class ChatInteraction(BaseInteraction):
-    message: str
-
-
+class ChatOutput(BaseOutput):
+    channel: ClassVar[TerminalChannel] = TerminalChannel()
+    input_value: str

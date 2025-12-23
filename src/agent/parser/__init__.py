@@ -8,7 +8,6 @@ from agent.parser.parser_registry import (
 from agent.parser.llm_parser import (
     LlmParser,
     parse_mutation_intent_with_llm,
-    parse_state_models_with_llm,
     register_llm_parser,
 )
 
@@ -22,6 +21,5 @@ __all__ = [
     "get_parser_for_entity",
     "LlmParser",
     "parse_mutation_intent_with_llm",
-    "parse_state_models_with_llm",
     "register_llm_parser",
 ]

@@ -1,17 +1,17 @@
 import json
 import textwrap
 
-from agent.inputs import BaseInput
+from agent.interaction.base_input import BaseInput
 from agent.interaction.channel.channel import BaseChannel
-from agent.interaction.llm_interaction import ChatInteraction
-from agent.interaction.controller.base_interactions_controller import BaseInteractionsController
+from agent.interaction.llm_output import ChatOutput
+from agent.interaction.controller.base_outputs_controller import BaseOutputsController
 from agent.state.controller.base_state_controller import BaseStateController
 from agent.state.entity.state_entity import BaseStateEntity
 from agent.state.entity.types import MutationIntent
 from openai import OpenAI
 
 
-class LlmChatInteractionsController(BaseInteractionsController):
+class LlmChatOutputsController(BaseOutputsController):
 
     def __init__(
         self,
@@ -21,7 +21,7 @@ class LlmChatInteractionsController(BaseInteractionsController):
         output_channel: BaseChannel | None = None,
     ):
         self.state_controller: BaseStateController = state_controller
-        self.interactions: list[ChatInteraction] = []
+        self.outputs: list[ChatOutput] = []
         self.client: OpenAI = client or OpenAI()
 
         if output_channel is None:
@@ -32,13 +32,13 @@ class LlmChatInteractionsController(BaseInteractionsController):
     def get_state_controller(self):
         return self.state_controller
 
-    def _record_interaction(self, interaction_object: ChatInteraction):
-        self.interactions.append(interaction_object)
+    def _record_output(self, output_object: ChatOutput):
+        self.outputs.append(output_object)
 
     def record_input(self, input: BaseInput):
         pass
 
-    def generate_interactions(self, intents: list[MutationIntent]) -> list[ChatInteraction]:
+    def generate_outputs(self, intents: list[MutationIntent]) -> list[ChatOutput]:
         entities: list[BaseStateEntity] = self.get_state_controller().storage.get_all()
 
         incomplete_entities = [
@@ -51,24 +51,23 @@ class LlmChatInteractionsController(BaseInteractionsController):
 
         intents_by_class_name = {intent.entity_class_name: intent for intent in intents}
 
-        interactions = []
+        outputs = []
         for entity in incomplete_entities:
             entity_class_name = entity.__class__.__name__
             intent = intents_by_class_name.get(entity_class_name)
-            # TODO: implement limit of interactions per channel
-            interaction = self.generate_interaction(entity, intent)
-            interactions.append(interaction)
+            output = self.generate_output(entity, intent)
+            outputs.append(output)
 
-        return interactions
+        return outputs
 
-    def generate_interaction(self, entity: BaseStateEntity, intent: MutationIntent | None) -> ChatInteraction:
+    def generate_output(self, entity: BaseStateEntity, intent: MutationIntent | None) -> ChatOutput:
         entity_json = entity.content.model_dump_json(indent=2, exclude_none=True)
         entity_schema = json.dumps(entity.content.model_json_schema(), indent=2)
 
         if intent:
             intent_json = intent.model_dump_json(indent=2, exclude_none=True)
             change_context = f"""
-        Last interaction resulted in the following change:
+        Last output resulted in the following change:
         {intent_json}
         """
         else:
@@ -98,8 +97,8 @@ class LlmChatInteractionsController(BaseInteractionsController):
 
         completion = self.client.chat.completions.parse(
             model="gpt-4o",
-            messages=[{"role": "system", "content": prompt}] + [i.to_llm_message() for i in self.interactions]
+            messages=[{"role": "system", "content": prompt}] + [i.to_llm_message() for i in self.outputs]
         )
 
         content = completion.choices[0].message.content
-        return self.output_channel.create_interaction(role='assistant', content=content)
+        return self.output_channel.create_output(content=content)
