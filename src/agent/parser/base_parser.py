@@ -24,6 +24,6 @@ class BaseParser(ABC):
         self,
         input_text: str,
         entity_contexts: list[EntityContext],
-        intent_context: list[Interaction] | None = None
+        prior_interactions: list[Interaction] | None = None
     ) -> list[MutationIntent]:
         pass

@@ -22,14 +22,12 @@ class BaseAgent:
             if input_obj.channel not in self.outputs_controller.input_channels:
                 continue
 
-            self.outputs_controller.record_input(input_obj)
             self.state_controller.record_input(input_obj)
             filtered_inputs.append(input_obj)
 
         changes: list[MutationIntent] = self.state_controller.update_state(filtered_inputs)
         outputs = self.outputs_controller.generate_outputs(changes)
         for output in outputs:
-            self.outputs_controller.record_output(output)
             self.state_controller.record_output(output)
         return outputs
 

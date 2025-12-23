@@ -24,21 +24,3 @@ class BaseOutputsController(ABC):
     @abstractmethod
     def generate_output(self, entity: BaseStateEntity, intent: MutationIntent | None) -> BaseOutput:
         pass
-
-    def record_output(self, output: BaseOutput):
-        output_channel = output.get_channel()
-        if output_channel is None:
-            return
-
-        if output_channel != self.output_channel and output_channel not in self.input_channels:
-            return
-
-        self._record_output(output)
-
-    @abstractmethod
-    def _record_output(self, output: BaseOutput):
-        pass
-
-    @abstractmethod
-    def record_input(self, input: BaseInput):
-        pass

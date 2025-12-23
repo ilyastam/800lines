@@ -58,7 +58,7 @@ class BaseStateController:
                 intents = parser.parse_mutation_intent(
                     _input.input_value,
                     entity_contexts,
-                    intent_context=self.get_interactions()
+                    prior_interactions=self.get_interactions()
                 )
                 for intent in intents:
                     intent.actor = _input.actor

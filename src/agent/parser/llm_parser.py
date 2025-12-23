@@ -27,12 +27,12 @@ class LlmParser(BaseParser):
         self,
         input_text: str,
         entity_contexts: list[EntityContext],
-        intent_context: list[Interaction | Any] | None = None
+        prior_interactions: list[Interaction | Any] | None = None
     ) -> list[MutationIntent]:
         combined_entity_ctx = "\n".join([mctx.model_dump_json() for mctx in entity_contexts])
-        _intent_context: list[dict[str, str]] = self._prepare_intent_context(intent_context)
+        _prior_messages: list[dict[str, str]] = self._prepare_prior_messages(prior_interactions)
 
-        messages = _intent_context + [
+        messages = _prior_messages + [
             {"role": "system", "content": "Below is the description of data entities that user can modify (set or unset a field value). User may also say something unrelated to these entities. If user intends to modify model entities, capture and return their intent according to provided response schema. If the intent is to unset a field - return default value for this field according to schema."},
             {"role": "system", "content": combined_entity_ctx},
             {"role": "user", "content": input_text},
@@ -49,7 +49,7 @@ class LlmParser(BaseParser):
         return event.intents
 
     @staticmethod
-    def _prepare_intent_context(intent_context: list[Interaction | Any] | None = None) -> list[dict[str, str]]:
+    def _prepare_prior_messages(intent_context: list[Interaction | Any] | None = None) -> list[dict[str, str]]:
         _intent_context: list[dict[str, str]] = []
         for entity_context in (intent_context or []):
             if isinstance(entity_context, Interaction):

@@ -32,12 +32,6 @@ class LlmChatOutputsController(BaseOutputsController):
     def get_state_controller(self):
         return self.state_controller
 
-    def _record_output(self, output_object: ChatOutput):
-        self.outputs.append(output_object)
-
-    def record_input(self, input: BaseInput):
-        pass
-
     def generate_outputs(self, intents: list[MutationIntent]) -> list[ChatOutput]:
         entities: list[BaseStateEntity] = self.get_state_controller().storage.get_all()
 
@@ -49,12 +43,12 @@ class LlmChatOutputsController(BaseOutputsController):
         if not incomplete_entities:
             return []
 
-        intents_by_class_name = {intent.entity_class_name: intent for intent in intents}
+        intents_by_class_name: dict[str, MutationIntent] = {intent.entity_class_name: intent for intent in intents}
 
         outputs = []
         for entity in incomplete_entities:
             entity_class_name = entity.__class__.__name__
-            intent = intents_by_class_name.get(entity_class_name)
+            intent: MutationIntent = intents_by_class_name.get(entity_class_name)
             output = self.generate_output(entity, intent)
             outputs.append(output)
 
@@ -67,7 +61,7 @@ class LlmChatOutputsController(BaseOutputsController):
         if intent:
             intent_json = intent.model_dump_json(indent=2, exclude_none=True)
             change_context = f"""
-        Last output resulted in the following change:
+        Last interaction resulted in the following change:
         {intent_json}
         """
         else:
@@ -75,7 +69,7 @@ class LlmChatOutputsController(BaseOutputsController):
 
         prompt = textwrap.dedent(f"""
         Your task is to generate a message to the user such that their
-        response would allow us to fill in all unfilled fields in the following entity:
+        response would allow us to fill in as many unfilled fields as possible in the following entity:
         {entity_schema}
 
         So far the following data has been collected:
