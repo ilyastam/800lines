@@ -1,7 +1,6 @@
 import json
 import textwrap
 
-from agent.interaction.base_input import BaseInput
 from agent.interaction.channel.channel import BaseChannel
 from agent.interaction.llm_output import ChatOutput
 from agent.interaction.controller.base_outputs_controller import BaseOutputsController
@@ -17,7 +16,6 @@ class LlmChatOutputsController(BaseOutputsController):
         self,
         state_controller: BaseStateController,
         client: OpenAI | None = None,
-        input_channels: set[BaseChannel] | None = None,
         output_channel: BaseChannel | None = None,
     ):
         self.state_controller: BaseStateController = state_controller
@@ -27,7 +25,7 @@ class LlmChatOutputsController(BaseOutputsController):
         if output_channel is None:
             raise ValueError("An output channel must be provided to initialize the controller")
 
-        super().__init__(input_channels=input_channels or set(), output_channel=output_channel)
+        super().__init__(output_channel=output_channel)
 
     def get_state_controller(self):
         return self.state_controller

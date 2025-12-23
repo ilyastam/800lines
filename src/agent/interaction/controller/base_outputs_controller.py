@@ -9,8 +9,7 @@ from agent.state.entity.types import MutationIntent
 
 class BaseOutputsController(ABC):
 
-    def __init__(self, input_channels: set[BaseChannel], output_channel: BaseChannel):
-        self.input_channels = input_channels
+    def __init__(self, output_channel: BaseChannel):
         self.output_channel = output_channel
 
     @abstractmethod

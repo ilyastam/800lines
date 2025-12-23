@@ -19,9 +19,6 @@ class BaseAgent:
     def consume_inputs(self, inputs: list[BaseInput]) -> list[BaseOutput]:
         filtered_inputs: list[BaseInput] = []
         for input_obj in inputs:
-            if input_obj.channel not in self.outputs_controller.input_channels:
-                continue
-
             self.state_controller.record_input(input_obj)
             filtered_inputs.append(input_obj)
 

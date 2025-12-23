@@ -34,7 +34,6 @@ if __name__ == '__main__':
     ))
     outputs_controller = LlmChatOutputsController(
         state_controller=state_controller,
-        input_channels={terminal_channel},
         output_channel=terminal_channel,
     )
     channel_dispatcher = ChannelDispatcher([
