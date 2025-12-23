@@ -132,7 +132,7 @@ class InMemoryStateStorage(BaseStateStorage):
             content_dict = entity.content.model_dump(exclude_unset=True, exclude_defaults=True)
             diffs = [FieldDiff(field_name=k, new_value=v) for k, v in content_dict.items()]
             intent = MutationIntent(
-                entity_class_name=type(entity).__name__,
+                entity_class=type(entity),
                 diffs=diffs
             )
             intents.append(intent)

@@ -50,7 +50,7 @@ class BaseStateController:
             for parser, classes in classes_by_parser.items():
                 entity_contexts = [
                     EntityContext(
-                        entity_class_name=cls.__name__,
+                        entity_class=cls,
                         entity_schema=cls.model_json_schema(),
                         entity_refs=self.storage.get_entity_refs_for_class(cls)
                     ) for cls in classes
@@ -87,7 +87,7 @@ class BaseStateController:
             content_dict = entity.content.model_dump(exclude_unset=True, exclude_defaults=True)
             diffs = [FieldDiff(field_name=k, new_value=v) for k, v in content_dict.items()]
             intent = MutationIntent(
-                entity_class_name=type(entity).__name__,
+                entity_class=type(entity),
                 diffs=diffs
             )
             intents.append(intent)

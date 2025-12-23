@@ -27,7 +27,7 @@ class OneEntityPerTypeStorage(BaseStateStorage):
 
         for intent in intents:
             applied_intent: MutationIntent | None = None
-            entity_class: type[BaseStateEntity] = self._entity_class_name_to_type.get(intent.entity_class_name, None)
+            entity_class: type[BaseStateEntity] = intent.entity_class
             if not entity_class:
                 continue
             self.store[entity_class], applied_intent = entity_class.merge(

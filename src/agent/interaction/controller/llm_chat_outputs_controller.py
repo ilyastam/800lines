@@ -44,12 +44,11 @@ class LlmChatOutputsController(BaseOutputsController):
         if not incomplete_entities:
             return []
 
-        intents_by_class_name: dict[str, MutationIntent] = {intent.entity_class_name: intent for intent in intents}
+        intents_by_class: dict[type, MutationIntent] = {intent.entity_class: intent for intent in intents}
 
         outputs = []
         for entity in incomplete_entities:
-            entity_class_name = entity.__class__.__name__
-            intent: MutationIntent = intents_by_class_name.get(entity_class_name)
+            intent: MutationIntent = intents_by_class.get(entity.__class__)
             output = self.generate_output(entity, intent)
             outputs.append(output)
 
