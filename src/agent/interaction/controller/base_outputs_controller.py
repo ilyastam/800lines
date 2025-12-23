@@ -1,6 +1,4 @@
 from abc import ABC, abstractmethod
-from typing import Iterable
-
 from agent.interaction.base_input import BaseInput
 from agent.interaction.base_output import BaseOutput
 from agent.interaction.channel.channel import BaseChannel
@@ -25,10 +23,15 @@ class BaseOutputsController(ABC):
     def generate_output(self, entity: BaseStateEntity, intent: MutationIntent | None) -> BaseOutput:
         pass
 
+    def is_applicable_(self, output_channel: BaseChannel | None) -> bool:
+        """Return True when this controller can handle the given channel."""
+
+        return output_channel is not None and output_channel == self.output_channel
+
     def emit_relevant_outputs(self, outputs: list[BaseOutput]):
         for output in outputs:
             output_channel = output.get_channel()
-            if not output_channel or output_channel != self.output_channel:
+            if not self.is_applicable_(output_channel):
                 continue
 
             self.emit_output(output)

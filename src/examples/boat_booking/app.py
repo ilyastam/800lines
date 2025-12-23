@@ -4,7 +4,7 @@ import shutil
 from pydantic import BaseModel
 
 from agent.base_agent import BaseAgent
-from agent.interaction.channel import ChannelDispatcher, TerminalChannel
+from agent.interaction.channel import TerminalChannel
 from agent.interaction.controller.llm_chat_outputs_controller import LlmChatOutputsController
 from agent.state.controller.base_state_controller import BaseStateController
 from agent.state.storage.one_entity_per_type_storage import OneEntityPerTypeStorage
@@ -37,19 +37,15 @@ if __name__ == '__main__':
         output_channel=terminal_channel,
         wrap_width=wrap_width,
     )
-    channel_dispatcher = ChannelDispatcher([
-        outputs_controller
-    ])
 
     agent = BaseAgent(
         state_controller=state_controller,
-        outputs_controller=outputs_controller,
-        channel_dispatcher=channel_dispatcher
+        output_controllers=[outputs_controller],
     )
 
     while not agent.is_done():
         outputs = agent.consume_inputs([bb_input])
-        channel_dispatcher.dispatch(outputs)
+        agent.dispatch_outputs(outputs)
         if agent.is_done():
             print("We are done here")
             break
