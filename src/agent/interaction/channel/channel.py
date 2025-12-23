@@ -35,7 +35,7 @@ class TerminalChannel(BaseChannel):
         )
 
     def create_output(self, content: str, actor: "BaseActor | None" = None) -> "BaseOutput":
-        from agent.interaction.llm_output import ChatOutput
+        from agent.interaction.output.llm_output import ChatOutput
 
         if actor is None:
             return ChatOutput(input_value=content, channel_instance=self)

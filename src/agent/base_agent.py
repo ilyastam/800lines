@@ -1,5 +1,5 @@
-from agent.interaction.base_input import BaseInput
-from agent.interaction.base_output import BaseOutput
+from agent.interaction.input.base_input import BaseInput
+from agent.interaction.output.base_output import BaseOutput
 from agent.interaction.channel.channel import BaseChannel
 from agent.interaction.controller.base_outputs_controller import BaseOutputsController
 from agent.state.controller.base_state_controller import BaseStateController
@@ -23,15 +23,10 @@ class BaseAgent:
         changes: list[MutationIntent] = self.state_controller.update_state(filtered_inputs)
 
         outputs: list[BaseOutput] = []
-        for controller in self.output_controllers:
-            outputs.extend(controller.generate_outputs(changes))
+        for output_controller in self.output_controllers:
+            outputs.extend(output_controller.generate_outputs(changes))
 
-        for output in outputs:
-            self.state_controller.record_output(output)
         return outputs
-
-    def emit_outputs(self, outputs: list[BaseOutput]) -> None:
-        self.dispatch_outputs(outputs)
 
     def dispatch_outputs(self, outputs: list[BaseOutput]) -> None:
         channel_to_outputs: dict[BaseChannel, list[BaseOutput]] = {}
@@ -40,15 +35,15 @@ class BaseAgent:
             output_channel = output.get_channel()
             if output_channel is None:
                 continue
-
             channel_to_outputs.setdefault(output_channel, []).append(output)
 
-        for controller in self.output_controllers:
+        for output_controller in self.output_controllers:
             for channel, channel_outputs in channel_to_outputs.items():
-                if controller.is_applicable_(channel):
-                    controller.emit_relevant_outputs(channel_outputs)
+                self.state_controller.record_outputs(
+                    output_controller.emit_relevant_outputs(channel_outputs)
+                )
 
-    def run_cycle(self, inputs: list[BaseInput]):
+    def run_cycle(self, inputs: list[BaseInput]) -> bool:
         outputs: list[BaseOutput] = self.consume_inputs(inputs)
         self.dispatch_outputs(outputs)
         return self.state_controller.is_state_completed()

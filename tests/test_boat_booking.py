@@ -3,7 +3,7 @@ import unittest
 
 from agent.interaction.channel import TerminalChannel
 from agent.interaction.controller.llm_chat_outputs_controller import LlmChatOutputsController
-from agent.interaction.llm_output import ChatOutput
+from agent.interaction.output.llm_output import ChatOutput
 from agent.parser.llm_parser import parse_mutation_intent_with_llm
 from agent.state.entity.types import EntityContext
 from agent.state.entity.actor.base_actor import BaseActor
@@ -34,7 +34,7 @@ class TestBoatBooking(unittest.TestCase):
         outputs_controller.record_output(
             ChatOutput(input_value=message, channel_instance=terminal_channel, actor=user_actor)
         )
-        state_controller.record_output(
+        state_controller.record_outputs(
             ChatOutput(input_value=message, channel_instance=terminal_channel, actor=user_actor)
         )
         state_controller.record_input(bb_input)
@@ -45,7 +45,7 @@ class TestBoatBooking(unittest.TestCase):
         outputs_controller.record_output(
             ChatOutput(input_value=interaction.input_value, channel_instance=terminal_channel)
         )
-        state_controller.record_output(
+        state_controller.record_outputs(
             ChatOutput(input_value=interaction.input_value, channel_instance=terminal_channel)
         )
 
@@ -57,7 +57,7 @@ class TestBoatBooking(unittest.TestCase):
         outputs_controller.record_output(
             ChatOutput(input_value=message, channel_instance=terminal_channel, actor=user_actor)
         )
-        state_controller.record_output(
+        state_controller.record_outputs(
             ChatOutput(input_value=message, channel_instance=terminal_channel, actor=user_actor)
         )
         changes = state_controller.update_state([bb_input])

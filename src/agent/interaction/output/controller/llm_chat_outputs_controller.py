@@ -3,7 +3,7 @@ import shutil
 import textwrap
 
 from agent.interaction.channel.channel import BaseChannel
-from agent.interaction.llm_output import ChatOutput
+from agent.interaction.output.llm_output import ChatOutput
 from agent.interaction.controller.base_outputs_controller import BaseOutputsController
 from agent.state.controller.base_state_controller import BaseStateController
 from agent.state.entity.state_entity import BaseStateEntity
@@ -97,9 +97,10 @@ class LlmChatOutputsController(BaseOutputsController):
         content = completion.choices[0].message.content
         return self.output_channel.create_output(content=content)
 
-    def emit_output(self, output: ChatOutput):
+    def emit_output(self, output: ChatOutput) -> ChatOutput:
         width = self.wrap_width or max(int(shutil.get_terminal_size().columns * 0.8), 20)
         role = output.get_role()
         role_prefix = f"{role.title()}: " if role else ""
         message = f"{role_prefix}{output.input_value}"
         print(textwrap.fill(message, width=width))
+        return output

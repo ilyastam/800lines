@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any
+from typing import Any, TYPE_CHECKING
 from pydantic import BaseModel, Field
 from agent.state.entity.actor.base_actor import BaseActor
-from agent.state.entity.state_entity import BaseStateEntity
+
+if TYPE_CHECKING:
+    from agent.state.entity.state_entity import BaseStateEntity
 
 Primitive = str | int | float | bool | datetime | None
 

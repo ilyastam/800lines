@@ -1,6 +1,6 @@
 from typing import ClassVar
 
-from agent.interaction.base_output import BaseOutput
+from agent.interaction.output.base_output import BaseOutput
 from agent.interaction.channel import TerminalChannel
 from agent.state.entity.actor.default_actor import DefaultActor
 

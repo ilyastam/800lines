@@ -1,5 +1,5 @@
-from agent.interaction.base_input import BaseInput
-from agent.interaction.base_output import BaseOutput
+from agent.interaction.input.base_input import BaseInput
+from agent.interaction.output.base_output import BaseOutput
 from agent.interaction.channel.channel import BaseChannel
 from agent.interaction.interaction import Interaction
 from agent.parser import BaseParser, get_parser_for_entity
@@ -69,8 +69,8 @@ class BaseStateController:
     def record_input(self, input_obj: BaseInput):
         self.interactions.append(input_obj)
 
-    def record_output(self, output_obj: BaseOutput):
-        self.interactions.append(output_obj)
+    def record_outputs(self, outputs: list[BaseOutput]):
+        self.interactions.extend(outputs)
 
     def get_interactions(self) -> list[Interaction]:
         return self.interactions

@@ -1,6 +1,5 @@
 from abc import ABC, abstractmethod
-from agent.interaction.base_input import BaseInput
-from agent.interaction.base_output import BaseOutput
+from agent.interaction.output.base_output import BaseOutput
 from agent.interaction.channel.channel import BaseChannel
 from agent.state.entity.state_entity import BaseStateEntity
 from agent.state.entity.types import MutationIntent
@@ -28,14 +27,18 @@ class BaseOutputsController(ABC):
 
         return output_channel is not None and output_channel == self.output_channel
 
-    def emit_relevant_outputs(self, outputs: list[BaseOutput]):
+    def emit_relevant_outputs(self, outputs: list[BaseOutput]) -> list[BaseOutput]:
+        emitted_outputs: list[BaseOutput] = []
         for output in outputs:
             output_channel = output.get_channel()
             if not self.is_applicable_(output_channel):
                 continue
 
-            self.emit_output(output)
+            emitted_output: BaseOutput | None = self.emit_output(output)
+            if emitted_output:
+                emitted_outputs.append(emitted_output)
+        return emitted_outputs
 
     @abstractmethod
-    def emit_output(self, output: BaseOutput):
+    def emit_output(self, output: BaseOutput) -> BaseOutput | None:
         pass

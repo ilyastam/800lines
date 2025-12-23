@@ -8,12 +8,14 @@ from textual.widgets import Header, Footer, Input, Static, RichLog
 from textual.binding import Binding
 from textual import work
 
+from agent.base_agent import BaseAgent
 from agent.interaction.channel import TerminalChannel
-from agent.interaction.controller.llm_chat_outputs_controller import LlmChatOutputsController
+from agent.interaction.output.controller.llm_chat_outputs_controller import LlmChatOutputsController
 from agent.state.controller.base_state_controller import BaseStateController
 from agent.state.entity.types import MutationIntent
-from examples.boat_booking.bb_state_storage import BBStateStorage
+from agent.state.storage.one_entity_per_type_storage import OneEntityPerTypeStorage
 from examples.boat_booking.input import BoatBookingInput
+from examples.boat_booking.state_entity import DesiredLocationEntity, BoatSpecEntity, DatesAndDurationEntity
 
 
 class BoatBookingTUI(App):
@@ -65,10 +67,18 @@ class BoatBookingTUI(App):
         super().__init__()
         self.channel = TerminalChannel(channel_id="boat-booking-textual")
         BoatBookingInput.channel = self.channel
-        self.state_controller = BaseStateController(storage=BBStateStorage())
+        self.state_controller = BaseStateController(
+            storage=OneEntityPerTypeStorage(
+                entity_classes=[DesiredLocationEntity, BoatSpecEntity, DatesAndDurationEntity]
+            )
+        )
         self.outputs_controller = LlmChatOutputsController(
             state_controller=self.state_controller,
             output_channel=self.channel,
+        )
+        self.agent = BaseAgent(
+            state_controller=self.state_controller,
+            output_controllers=[self.outputs_controller],
         )
 
     def compose(self) -> ComposeResult:
@@ -101,13 +111,12 @@ class BoatBookingTUI(App):
         bb_input = self._build_input(message)
 
         with redirect_stdout(captured_output):
-            self.outputs_controller.record_input(bb_input)
             self.state_controller.record_input(bb_input)
             changes = self.state_controller.update_state([bb_input])
 
         self.call_from_thread(self.log_state_changes, changes)
 
-        if self.state_controller.is_state_completed():
+        if self.agent.is_done():
             self.call_from_thread(self.handle_completion)
             return
 
@@ -120,8 +129,7 @@ class BoatBookingTUI(App):
 
         if outputs:
             output = outputs[0]
-            self.outputs_controller.record_output(output)
-            self.state_controller.record_output(output)
+            self.state_controller.record_outputs([output])
             self.call_from_thread(self.add_chat_message, str(output.input_value), False)
 
     def add_chat_message(self, content: str, is_user: bool) -> None:

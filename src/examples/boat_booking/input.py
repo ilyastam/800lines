@@ -1,6 +1,6 @@
 from typing import ClassVar
 
-from agent.interaction.base_input import BaseInput
+from agent.interaction.input.base_input import BaseInput
 from agent.interaction.channel import TerminalChannel
 from examples.boat_booking.state_entity import DesiredLocationEntity, BoatSpecEntity, DatesAndDurationEntity
 
