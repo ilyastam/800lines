@@ -5,7 +5,7 @@ from pydantic import BaseModel
 
 from agent.base_agent import BaseAgent
 from agent.interaction.channel import ChannelDispatcher, TerminalChannel, TerminalChannelConnector
-from agent.interaction.controller.llm_chat_interactions_controller import LlmChatInteractionsController
+from agent.interaction.controller.llm_chat_outputs_controller import LlmChatOutputsController
 from agent.state.controller.base_state_controller import BaseStateController
 from agent.state.storage.one_entity_per_type_storage import OneEntityPerTypeStorage
 from examples.boat_booking.actor import CustomerActor
@@ -32,7 +32,7 @@ if __name__ == '__main__':
     state_controller = BaseStateController(storage=OneEntityPerTypeStorage(
         entity_classes=[DesiredLocationEntity, BoatSpecEntity, DatesAndDurationEntity]
     ))
-    interactions_controller = LlmChatInteractionsController(
+    outputs_controller = LlmChatOutputsController(
         state_controller=state_controller,
         input_channels={terminal_channel},
         output_channel=terminal_channel,
@@ -43,22 +43,18 @@ if __name__ == '__main__':
 
     agent = BaseAgent(
         state_controller=state_controller,
-        interactions_controller=interactions_controller,
+        outputs_controller=outputs_controller,
         channel_dispatcher=channel_dispatcher
     )
 
     while not agent.is_done():
-        changes = state_controller.update_state([bb_input])
-        interactions_controller.record_input(bb_input)
-        if state_controller.is_state_completed():
+        outputs = agent.consume_inputs([bb_input])
+        channel_dispatcher.dispatch(outputs)
+        if agent.is_done():
             print("We are done here")
             break
-        interactions = interactions_controller.generate_interactions(changes)
-        interaction = interactions[0]
-        interactions_controller.record_interaction(interaction)
-        channel_dispatcher.dispatch([interaction])
         message = input(">")
-        bb_input = BoatBookingInput(input_value=message, context=[interaction], actor=customer)
+        bb_input = BoatBookingInput(input_value=message, actor=customer)
 
     for entity in state_controller.storage.get_all():
         print(f"{type(entity).__name__}: {entity.content.model_dump()}")

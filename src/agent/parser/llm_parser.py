@@ -1,10 +1,11 @@
 import json
-from typing import Any, Union
+from typing import Any
 from openai import OpenAI
-from pydantic import create_model, BaseModel
+from pydantic import BaseModel
 
-from agent.interaction.llm_interaction import ChatInteraction
+from agent.interaction.interaction import Interaction
 from agent.parser.base_parser import BaseParser
+from agent.state.entity.actor.default_actor import DefaultActor
 from agent.state.entity.llm_parsed_entity import LlmParsedStateEntity
 from agent.state.entity.types import EntityContext, MutationIntent, MutationIntents
 
@@ -26,7 +27,7 @@ class LlmParser(BaseParser):
         self,
         input_text: str,
         entity_contexts: list[EntityContext],
-        intent_context: list[ChatInteraction | Any] | None = None
+        intent_context: list[Interaction | Any] | None = None
     ) -> list[MutationIntent]:
         combined_entity_ctx = "\n".join([mctx.model_dump_json() for mctx in entity_contexts])
         _intent_context: list[dict[str, str]] = self._prepare_intent_context(intent_context)
@@ -48,53 +49,43 @@ class LlmParser(BaseParser):
         return event.intents
 
     @staticmethod
-    def _prepare_intent_context(intent_context: list[ChatInteraction | Any] | None = None) -> list[dict[str, str]]:
+    def _prepare_intent_context(intent_context: list[Interaction | Any] | None = None) -> list[dict[str, str]]:
         _intent_context: list[dict[str, str]] = []
         for entity_context in (intent_context or []):
-            if isinstance(entity_context, ChatInteraction):
-                _intent_context.append(entity_context.to_llm_message())
-            elif isinstance(_intent_context, BaseModel):
+            if isinstance(entity_context, Interaction):
+                to_message = getattr(entity_context, "to_llm_message", None)
+                if callable(to_message):
+                    _intent_context.append(to_message())
+                    continue
+
+                content = getattr(entity_context, "input_value", None)
+                if content is None:
+                    continue
+                if isinstance(content, BaseModel):
+                    content = content.model_dump_json()
+                elif isinstance(content, (list, dict)):
+                    try:
+                        content = json.dumps(content)
+                    except Exception:
+                        content = str(content)
+                else:
+                    content = str(content)
+                role = "assistant" if isinstance(entity_context.actor, DefaultActor) else "user"
+                _intent_context.append({"role": role, "content": content})
+            elif isinstance(entity_context, BaseModel):
                 _intent_context.append({"role": "system", "content": entity_context.model_dump_json()})
-            elif isinstance(entity_context, list) or isinstance(entity_context, dict):
+            elif isinstance(entity_context, (list, dict)):
                 try:
                     _intent_context.append({"role": "system", "content": json.dumps(entity_context)})
-                except Exception as e:
+                except Exception:
                     pass
             elif entity_context:
                 try:
                     _intent_context.append({"role": "system", "content": str(entity_context)})
-                except Exception as e:
+                except Exception:
                     pass
 
         return _intent_context
-
-
-def parse_state_models_with_llm(input_text: str,
-                                state_model_classes: list[type[LlmParsedStateEntity]],
-                                context: list[dict[str, str]] | None = None,
-                                client: OpenAI | None = None
-                                ) -> list[Any] | None:
-    COMBINED_STATE_MODELS_SCHEMA = create_model(
-        "COMBINED_STATE_MODELS_SCHEMA",
-        parsed_models=(list[Union[tuple(state_model_classes) + (type(None),)]] | None, None),
-    )
-
-    messages = (context or []) + [
-        {"role": "system", "content": "Extract the entity from the text. Only include fields that have values different from their default values."},
-        {"role": "user", "content": input_text},
-    ]
-
-    llm_client = client or OpenAI()
-
-    completion = llm_client.chat.completions.parse(
-        model="gpt-4o",
-        messages=messages,
-        response_format=COMBINED_STATE_MODELS_SCHEMA,
-        temperature=0.0
-    )
-
-    event = completion.choices[0].message.parsed
-    return event.parsed_models if hasattr(event, 'parsed_models') else None
 
 
 def parse_mutation_intent_with_llm(input_text: str,

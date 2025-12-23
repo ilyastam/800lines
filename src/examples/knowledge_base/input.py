@@ -1,6 +1,6 @@
 from typing import ClassVar
 
-from agent.inputs import BaseInput
+from agent.interaction.base_input import BaseInput
 from agent.interaction.channel import BaseChannel
 from examples.knowledge_base.state_entities import Task, Decision
 

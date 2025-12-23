@@ -1,5 +1,7 @@
-from agent.inputs import BaseInput
+from agent.interaction.base_input import BaseInput
+from agent.interaction.base_output import BaseOutput
 from agent.interaction.channel.channel import BaseChannel
+from agent.interaction.interaction import Interaction
 from agent.parser import BaseParser, get_parser_for_entity
 from agent.state.entity.state_entity import BaseStateEntity
 from agent.state import BaseStateStorage
@@ -18,6 +20,7 @@ class BaseStateController:
             storage: Storage backend to use
         """
         self.storage = storage
+        self.interactions: list[Interaction] = []
 
     def is_state_completable(self):
         entities = self.storage.get_all()
@@ -55,13 +58,22 @@ class BaseStateController:
                 intents = parser.parse_mutation_intent(
                     _input.input_value,
                     entity_contexts,
-                    intent_context=_input.context
+                    intent_context=self.get_interactions()
                 )
                 for intent in intents:
                     intent.actor = _input.actor
                 all_intents.extend(intents)
 
         return all_intents
+
+    def record_input(self, input_obj: BaseInput):
+        self.interactions.append(input_obj)
+
+    def record_output(self, output_obj: BaseOutput):
+        self.interactions.append(output_obj)
+
+    def get_interactions(self) -> list[Interaction]:
+        return self.interactions
 
     def _get_parser_for_entity_and_channel(
         self, entity_cls: type[BaseStateEntity], channel: BaseChannel

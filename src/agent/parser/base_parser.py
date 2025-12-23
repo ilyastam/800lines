@@ -1,6 +1,8 @@
 from abc import ABC, abstractmethod
 from typing import Any
 
+from agent.interaction.interaction import Interaction
+
 from agent.state.entity.types import EntityContext, MutationIntent
 from agent.state.entity.state_entity import BaseStateEntity
 
@@ -22,6 +24,6 @@ class BaseParser(ABC):
         self,
         input_text: str,
         entity_contexts: list[EntityContext],
-        intent_context: Any | None = None
+        intent_context: list[Interaction] | None = None
     ) -> list[MutationIntent]:
         pass

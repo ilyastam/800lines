@@ -5,20 +5,20 @@ import textwrap
 
 from agent.interaction.channel.base_channel_connector import BaseChannelConnector
 from agent.interaction.channel.channel import TerminalChannel
-from agent.interaction.llm_interaction import ChatInteraction
+from agent.interaction.llm_output import ChatOutput
 
 
 class TerminalChannelConnector(BaseChannelConnector):
-    """Simple connector that writes interactions to the terminal."""
+    """Simple connector that writes outputs to the terminal."""
 
     def __init__(self, wrap_width: int | None = None, channel: TerminalChannel | None = None):
         channel = channel or TerminalChannel()
-        super().__init__({ChatInteraction}, channel)
+        super().__init__({ChatOutput}, channel)
         self.wrap_width = wrap_width
 
-    def emit(self, interaction: ChatInteraction):
+    def emit(self, output: ChatOutput):
         width = self.wrap_width or max(int(shutil.get_terminal_size().columns * 0.8), 20)
-        role = getattr(interaction, "role", "")
+        role = output.get_role()
         role_prefix = f"{role.title()}: " if role else ""
-        message = f"{role_prefix}{interaction.content}"
+        message = f"{role_prefix}{output.input_value}"
         print(textwrap.fill(message, width=width))

@@ -1,4 +1,4 @@
-from typing import Any, ClassVar
+from typing import ClassVar
 
 from pydantic import BaseModel, Field
 
@@ -7,11 +7,8 @@ from agent.state.entity.actor.base_actor import BaseActor
 from agent.state.entity.actor.default_actor import DefaultActor
 
 
-class BaseInteraction(BaseModel):
+class Interaction(BaseModel):
     channel: ClassVar[BaseChannel]
-
-    content: Any
-    channel_instance: BaseChannel | None = None
     actor: BaseActor = Field(default_factory=DefaultActor)
 
     def __init_subclass__(cls, **kwargs):
@@ -25,6 +22,5 @@ class BaseInteraction(BaseModel):
                 f"{cls.__name__}.channel must be set to a BaseChannel instance at class definition time"
             )
 
-    def get_channel(self) -> BaseChannel | None:
-        return self.channel_instance or self.__class__.channel
-
+    def get_channel(self) -> BaseChannel:
+        return self.__class__.channel

@@ -2,10 +2,11 @@ import shutil
 import unittest
 
 from agent.interaction.channel import TerminalChannel
-from agent.interaction.controller.llm_chat_interactions_controller import LlmChatInteractionsController
-from agent.interaction.llm_interaction import ChatInteraction
+from agent.interaction.controller.llm_chat_outputs_controller import LlmChatOutputsController
+from agent.interaction.llm_output import ChatOutput
 from agent.parser.llm_parser import parse_mutation_intent_with_llm
 from agent.state.entity.types import EntityContext
+from agent.state.entity.actor.base_actor import BaseActor
 from agent.state.controller.base_state_controller import BaseStateController
 from examples.boat_booking.bb_state_storage import BBStateStorage
 from examples.boat_booking.input import BoatBookingInput
@@ -22,31 +23,42 @@ class TestBoatBooking(unittest.TestCase):
         bb_input = BoatBookingInput(input_value=message)
 
         state_controller = BaseStateController(storage=BBStateStorage())
-        interactions_controller = LlmChatInteractionsController(
+        outputs_controller = LlmChatOutputsController(
             state_controller=state_controller,
             input_channels={terminal_channel},
             output_channel=terminal_channel,
         )
 
-        interactions_controller.record_interaction(
-            ChatInteraction(role='user', content=message, channel=terminal_channel)
+        user_actor = BaseActor(id="user")
+
+        outputs_controller.record_output(
+            ChatOutput(input_value=message, channel_instance=terminal_channel, actor=user_actor)
         )
+        state_controller.record_output(
+            ChatOutput(input_value=message, channel_instance=terminal_channel, actor=user_actor)
+        )
+        state_controller.record_input(bb_input)
         changes = state_controller.update_state([bb_input])
 
-        interactions = interactions_controller.generate_interactions(changes)
+        interactions = outputs_controller.generate_outputs(changes)
         interaction = interactions[0]
-        interactions_controller.record_interaction(
-            ChatInteraction(role='assistant', content=interaction.content, channel=terminal_channel)
+        outputs_controller.record_output(
+            ChatOutput(input_value=interaction.input_value, channel_instance=terminal_channel)
+        )
+        state_controller.record_output(
+            ChatOutput(input_value=interaction.input_value, channel_instance=terminal_channel)
         )
 
         unset_field_message = "No actually I changed my mind about 40ft"
 
-        bb_input = BoatBookingInput(input_value=unset_field_message, context=[
-            ChatInteraction(role="assistant", content=str(interaction.content), channel=terminal_channel),
-        ])
+        bb_input = BoatBookingInput(input_value=unset_field_message)
+        state_controller.record_input(bb_input)
 
-        interactions_controller.record_interaction(
-            ChatInteraction(role='user', content=message, channel=terminal_channel)
+        outputs_controller.record_output(
+            ChatOutput(input_value=message, channel_instance=terminal_channel, actor=user_actor)
+        )
+        state_controller.record_output(
+            ChatOutput(input_value=message, channel_instance=terminal_channel, actor=user_actor)
         )
         changes = state_controller.update_state([bb_input])
 
