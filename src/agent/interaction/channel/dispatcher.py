@@ -21,4 +21,4 @@ class ChannelDispatcher:
         """Send outputs to every controller that can handle them."""
 
         for controller in self.controllers:
-            controller.emit_relevant(outputs)
+            controller.emit_relevant_outputs(outputs)

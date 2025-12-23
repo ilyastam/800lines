@@ -1,7 +1,6 @@
 import json
 import shutil
 import textwrap
-from typing import Callable
 
 from agent.interaction.channel.channel import BaseChannel
 from agent.interaction.llm_output import ChatOutput
@@ -20,18 +19,16 @@ class LlmChatOutputsController(BaseOutputsController):
         client: OpenAI | None = None,
         output_channel: BaseChannel | None = None,
         wrap_width: int | None = None,
-        message_emitter: Callable[[str, bool], None] | None = None,
     ):
         self.state_controller: BaseStateController = state_controller
         self.outputs: list[ChatOutput] = []
         self.client: OpenAI = client or OpenAI()
         self.wrap_width = wrap_width
-        self.message_emitter = message_emitter
 
         if output_channel is None:
             raise ValueError("An output channel must be provided to initialize the controller")
 
-        super().__init__(output_channel=output_channel, output_types={ChatOutput})
+        super().__init__(output_channel=output_channel)
 
     def get_state_controller(self):
         return self.state_controller
@@ -101,13 +98,7 @@ class LlmChatOutputsController(BaseOutputsController):
         content = completion.choices[0].message.content
         return self.output_channel.create_output(content=content)
 
-    def emit(self, output: ChatOutput):
-        is_user = output.get_role() == "user"
-
-        if self.message_emitter is not None:
-            self.message_emitter(str(output.input_value), is_user)
-            return
-
+    def emit_output(self, output: ChatOutput):
         width = self.wrap_width or max(int(shutil.get_terminal_size().columns * 0.8), 20)
         role = output.get_role()
         role_prefix = f"{role.title()}: " if role else ""
