@@ -25,8 +25,8 @@ class TestBoatBooking(unittest.TestCase):
         state_controller = BaseStateController(storage=BBStateStorage())
         outputs_controller = LlmChatOutputsController(
             state_controller=state_controller,
-            input_channels={terminal_channel},
             output_channel=terminal_channel,
+            wrap_width=wrap_width,
         )
 
         user_actor = BaseActor(id="user")
