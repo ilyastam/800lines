@@ -4,7 +4,7 @@ import shutil
 from pydantic import BaseModel
 
 from agent.base_agent import BaseAgent
-from agent.interaction.channel import ChannelDispatcher, TerminalChannel, TerminalChannelConnector
+from agent.interaction.channel import ChannelDispatcher, TerminalChannel
 from agent.interaction.controller.llm_chat_outputs_controller import LlmChatOutputsController
 from agent.state.controller.base_state_controller import BaseStateController
 from agent.state.storage.one_entity_per_type_storage import OneEntityPerTypeStorage
@@ -35,9 +35,10 @@ if __name__ == '__main__':
     outputs_controller = LlmChatOutputsController(
         state_controller=state_controller,
         output_channel=terminal_channel,
+        wrap_width=wrap_width,
     )
     channel_dispatcher = ChannelDispatcher([
-        TerminalChannelConnector(wrap_width=wrap_width, channel=terminal_channel)
+        outputs_controller
     ])
 
     agent = BaseAgent(

@@ -68,7 +68,6 @@ class BoatBookingTUI(App):
         self.state_controller = BaseStateController(storage=BBStateStorage())
         self.outputs_controller = LlmChatOutputsController(
             state_controller=self.state_controller,
-            input_channels={self.channel},
             output_channel=self.channel,
         )
 
