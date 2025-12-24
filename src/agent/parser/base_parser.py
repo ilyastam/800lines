@@ -3,7 +3,8 @@ from typing import Any
 
 from agent.interaction.interaction import Interaction
 
-from agent.state.entity.types import EntityContext, MutationIntent
+from agent.parser.entity_context import EntityContext
+from agent.parser.mutation_intent import MutationIntent
 from agent.state.entity.state_entity import BaseStateEntity
 
 

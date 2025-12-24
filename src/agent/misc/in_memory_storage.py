@@ -10,7 +10,8 @@ from agent.state.storage.base_state_storage import BaseStateStorage
 from agent.misc.embedding_service import EmbeddingService
 from agent.misc.similarity_metrics import cosine_similarity
 from agent.state.entity.state_entity import BaseStateEntity
-from agent.state.entity.types import MutationIntent, FieldDiff
+from agent.parser.mutation_intent import MutationIntent
+from agent.state.entity.types import FieldDiff
 
 
 class InMemoryStateStorage(BaseStateStorage):

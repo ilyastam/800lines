@@ -3,11 +3,14 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Generic, TypeVar
+from typing import Generic, TypeVar, TYPE_CHECKING
 from pydantic import BaseModel, Field
 
 from agent.state.entity.actor.base_actor import BaseActor
-from agent.state.entity.types import MutationIntent, FieldDiff
+from agent.state.entity.types import FieldDiff
+
+if TYPE_CHECKING:
+    from agent.parser.mutation_intent import MutationIntent
 
 ContentType = TypeVar("ContentType")
 

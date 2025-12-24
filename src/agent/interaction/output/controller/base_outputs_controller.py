@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from agent.interaction.output.base_output import BaseOutput
 from agent.interaction.channel.channel import BaseChannel
 from agent.state.entity.state_entity import BaseStateEntity
-from agent.state.entity.types import MutationIntent
+from agent.parser.mutation_intent import MutationIntent
 
 
 class BaseOutputsController(ABC):

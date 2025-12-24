@@ -4,8 +4,7 @@ import shutil
 from pydantic import BaseModel
 
 from agent.base_agent import BaseAgent
-from agent.interaction.channel import TerminalChannel
-from agent.interaction.controller.llm_chat_outputs_controller import LlmChatOutputsController
+from agent.interaction.output.controller.llm_chat_outputs_controller import LlmChatOutputsController
 from agent.state.controller.base_state_controller import BaseStateController
 from agent.state.storage.one_entity_per_type_storage import OneEntityPerTypeStorage
 from examples.boat_booking.actor import CustomerActor

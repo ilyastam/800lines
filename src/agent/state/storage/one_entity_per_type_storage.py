@@ -3,7 +3,7 @@ import json
 
 from agent.state.entity.state_entity import BaseStateEntity
 from agent.state import BaseStateStorage
-from agent.state.entity.types import MutationIntent
+from agent.parser.mutation_intent import MutationIntent
 
 
 def _get_qualified_name(cls: type) -> str:

@@ -1,9 +1,13 @@
 """Abstract base class for state storage implementations."""
+from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from typing import TYPE_CHECKING
 
 from agent.state.entity.state_entity import BaseStateEntity
-from agent.state.entity.types import MutationIntent
+
+if TYPE_CHECKING:
+    from agent.parser.mutation_intent import MutationIntent
 
 
 class BaseStateStorage(ABC):

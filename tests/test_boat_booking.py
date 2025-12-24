@@ -2,15 +2,15 @@ import shutil
 import unittest
 
 from agent.interaction.channel import TerminalChannel
-from agent.interaction.controller.llm_chat_outputs_controller import LlmChatOutputsController
+from agent.interaction.output.controller.llm_chat_outputs_controller import LlmChatOutputsController
 from agent.interaction.output.llm_output import ChatOutput
 from agent.parser.llm_parser import parse_mutation_intent_with_llm
-from agent.state.entity.types import EntityContext
+from agent.parser.entity_context import EntityContext
 from agent.state.entity.actor.base_actor import BaseActor
 from agent.state.controller.base_state_controller import BaseStateController
-from examples.boat_booking.bb_state_storage import BBStateStorage
+from agent.state.storage.one_entity_per_type_storage import OneEntityPerTypeStorage
 from examples.boat_booking.input import BoatBookingInput
-from examples.boat_booking.state_entity import BoatSpecEntity
+from examples.boat_booking.state_entity import BoatSpecEntity, DesiredLocationEntity, DatesAndDurationEntity
 
 
 class TestBoatBooking(unittest.TestCase):
@@ -22,7 +22,9 @@ class TestBoatBooking(unittest.TestCase):
         BoatBookingInput.channel = terminal_channel
         bb_input = BoatBookingInput(input_value=message)
 
-        state_controller = BaseStateController(storage=BBStateStorage())
+        state_controller = BaseStateController(storage=OneEntityPerTypeStorage(
+            entity_classes=[DesiredLocationEntity, BoatSpecEntity, DatesAndDurationEntity]
+        ))
         outputs_controller = LlmChatOutputsController(
             state_controller=state_controller,
             output_channel=terminal_channel,
@@ -65,11 +67,11 @@ class TestBoatBooking(unittest.TestCase):
         pass
 
     def test_mutation_intents_set_fields(self):
-        import json
         message = "I want to book a 40ft catamaran"
 
         model_ctx = EntityContext(
-            entity_class_name=json.dumps(BoatSpecEntity.model_json_schema()),
+            entity_class=BoatSpecEntity,
+            entity_schema=BoatSpecEntity.model_json_schema(),
         )
         intents = parse_mutation_intent_with_llm(
             input_text=message,
@@ -82,11 +84,11 @@ class TestBoatBooking(unittest.TestCase):
         self.assertEqual(diffs_by_field.get('boat_type'), 'catamaran')
 
     def test_mutation_intents_unset_fields(self):
-        import json
         message = "Actually no, I've changed my mind about 40ft"
 
         model_ctx = EntityContext(
-            entity_class_name=json.dumps(BoatSpecEntity.model_json_schema()),
+            entity_class=BoatSpecEntity,
+            entity_schema=BoatSpecEntity.model_json_schema(),
         )
         intents = parse_mutation_intent_with_llm(
             input_text=message,

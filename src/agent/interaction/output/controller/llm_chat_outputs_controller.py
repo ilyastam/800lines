@@ -4,10 +4,10 @@ import textwrap
 
 from agent.interaction.channel.channel import BaseChannel
 from agent.interaction.output.llm_output import ChatOutput
-from agent.interaction.controller.base_outputs_controller import BaseOutputsController
+from agent.interaction.output.controller.base_outputs_controller import BaseOutputsController
 from agent.state.controller.base_state_controller import BaseStateController
 from agent.state.entity.state_entity import BaseStateEntity
-from agent.state.entity.types import MutationIntent
+from agent.parser.mutation_intent import MutationIntent
 from openai import OpenAI
 
 

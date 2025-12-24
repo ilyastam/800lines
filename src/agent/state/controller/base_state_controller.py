@@ -3,9 +3,11 @@ from agent.interaction.output.base_output import BaseOutput
 from agent.interaction.channel.channel import BaseChannel
 from agent.interaction.interaction import Interaction
 from agent.parser import BaseParser, get_parser_for_entity
+from agent.parser.entity_context import EntityContext
+from agent.parser.mutation_intent import MutationIntent
 from agent.state.entity.state_entity import BaseStateEntity
 from agent.state import BaseStateStorage
-from agent.state.entity.types import FieldDiff, EntityContext, MutationIntent
+from agent.state.entity.types import FieldDiff
 
 
 class BaseStateController:

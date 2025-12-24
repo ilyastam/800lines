@@ -1,9 +1,9 @@
 from agent.interaction.input.base_input import BaseInput
 from agent.interaction.output.base_output import BaseOutput
 from agent.interaction.channel.channel import BaseChannel
-from agent.interaction.controller.base_outputs_controller import BaseOutputsController
+from agent.interaction.output.controller.base_outputs_controller import BaseOutputsController
 from agent.state.controller.base_state_controller import BaseStateController
-from agent.state.entity.types import MutationIntent
+from agent.parser.mutation_intent import MutationIntent
 
 
 class BaseAgent:

@@ -7,7 +7,8 @@ from agent.interaction.interaction import Interaction
 from agent.parser.base_parser import BaseParser
 from agent.state.entity.actor.default_actor import DefaultActor
 from agent.state.entity.llm_parsed_entity import LlmParsedStateEntity
-from agent.state.entity.types import EntityContext, MutationIntent, MutationIntents
+from agent.parser.entity_context import EntityContext
+from agent.parser.mutation_intent import MutationIntent, LlmMutationIntents
 
 
 class LlmParser(BaseParser):
@@ -41,12 +42,22 @@ class LlmParser(BaseParser):
         completion = self.client.chat.completions.parse(
             model="gpt-4o",
             messages=messages,
-            response_format=MutationIntents,
+            response_format=LlmMutationIntents,
             temperature=0.0
         )
 
-        event: MutationIntents = completion.choices[0].message.parsed
-        return event.intents
+        llm_response: LlmMutationIntents = completion.choices[0].message.parsed
+        entity_class_map = {ctx.entity_class.__name__: ctx.entity_class for ctx in entity_contexts}
+
+        return [
+            MutationIntent(
+                entity_class=entity_class_map[llm_intent.entity_class_name],
+                entity_ref=llm_intent.entity_ref,
+                diffs=llm_intent.diffs,
+            )
+            for llm_intent in llm_response.intents
+            if llm_intent.entity_class_name in entity_class_map
+        ]
 
     @staticmethod
     def _prepare_prior_messages(intent_context: list[Interaction | Any] | None = None) -> list[dict[str, str]]:
@@ -107,12 +118,22 @@ def parse_mutation_intent_with_llm(input_text: str,
     completion = llm_client.chat.completions.parse(
         model="gpt-4o",
         messages=messages,
-        response_format=MutationIntents,
+        response_format=LlmMutationIntents,
         temperature=0.0
     )
 
-    event: MutationIntents = completion.choices[0].message.parsed
-    return event.intents
+    llm_response: LlmMutationIntents = completion.choices[0].message.parsed
+    entity_class_map = {ctx.entity_class.__name__: ctx.entity_class for ctx in entity_contexts}
+
+    return [
+        MutationIntent(
+            entity_class=entity_class_map[llm_intent.entity_class_name],
+            entity_ref=llm_intent.entity_ref,
+            diffs=llm_intent.diffs,
+        )
+        for llm_intent in llm_response.intents
+        if llm_intent.entity_class_name in entity_class_map
+    ]
 
 
 def register_llm_parser(channel_domain: str | None = None) -> None:
