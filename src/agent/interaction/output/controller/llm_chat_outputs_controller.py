@@ -2,6 +2,7 @@ import json
 import shutil
 import textwrap
 
+from agent.interaction import BaseOutput
 from agent.interaction.channel.channel import BaseChannel
 from agent.interaction.output.llm_output import ChatOutput
 from agent.interaction.output.controller.base_outputs_controller import BaseOutputsController
@@ -96,6 +97,17 @@ class LlmChatOutputsController(BaseOutputsController):
 
         content = completion.choices[0].message.content
         return self.output_channel.create_output(content=content)
+
+    def emit_relevant_outputs(self, outputs: list[BaseOutput]) -> list[BaseOutput]:
+        for output in outputs:
+            output_channel = output.get_channel()
+            if not self.is_applicable_(output_channel):
+                continue
+
+            emitted_output: BaseOutput | None = self.emit_output(output)
+            if emitted_output:
+                # exit aster first emit
+                return [emitted_output]
 
     def emit_output(self, output: ChatOutput) -> ChatOutput:
         width = self.wrap_width or max(int(shutil.get_terminal_size().columns * 0.8), 20)
