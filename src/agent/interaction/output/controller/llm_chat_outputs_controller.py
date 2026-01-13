@@ -34,7 +34,7 @@ class LlmChatOutputsController(BaseOutputsController):
     def get_state_controller(self):
         return self.state_controller
 
-    def generate_outputs(self, state_diffs: list[StateDiff]) -> list[ChatOutput]:
+    def generate_outputs(self, state_diffs: list[StateDiff], max_outputs: int | None = 1) -> list[ChatOutput]:
         entities: list[BaseStateEntity] = self.get_state_controller().storage.get_all()
 
         incomplete_entities = [
@@ -52,6 +52,8 @@ class LlmChatOutputsController(BaseOutputsController):
             state_diff: StateDiff = diffs_by_class.get(entity.__class__)
             output = self.generate_output(entity, state_diff)
             outputs.append(output)
+            if max_outputs and len(outputs) >= max_outputs:
+                break
 
         return outputs
 

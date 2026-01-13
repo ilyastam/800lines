@@ -15,7 +15,7 @@ class BaseOutputsController(ABC):
         pass
 
     @abstractmethod
-    def generate_outputs(self, state_diffs: list[StateDiff]) -> list[BaseOutput]:
+    def generate_outputs(self, state_diffs: list[StateDiff], max_outputs: int | None = None) -> list[BaseOutput]:
         pass
 
     @abstractmethod
