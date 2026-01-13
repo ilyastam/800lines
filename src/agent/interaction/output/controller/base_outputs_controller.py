@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from agent.interaction.output.base_output import BaseOutput
 from agent.interaction.channel.channel import BaseChannel
 from agent.state.entity.state_entity import BaseStateEntity
-from agent.parser.mutation_intent import MutationIntent
+from agent.parser.state_diff import StateDiff
 
 
 class BaseOutputsController(ABC):
@@ -15,11 +15,11 @@ class BaseOutputsController(ABC):
         pass
 
     @abstractmethod
-    def generate_outputs(self, intents: list[MutationIntent]) -> list[BaseOutput]:
+    def generate_outputs(self, state_diffs: list[StateDiff]) -> list[BaseOutput]:
         pass
 
     @abstractmethod
-    def generate_output(self, entity: BaseStateEntity, intent: MutationIntent | None) -> BaseOutput:
+    def generate_output(self, entity: BaseStateEntity, state_diff: StateDiff | None) -> BaseOutput:
         pass
 
     def is_applicable_(self, output_channel: BaseChannel | None) -> bool:

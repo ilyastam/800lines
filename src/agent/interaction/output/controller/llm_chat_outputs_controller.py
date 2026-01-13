@@ -8,7 +8,7 @@ from agent.interaction.output.llm_output import ChatOutput
 from agent.interaction.output.controller.base_outputs_controller import BaseOutputsController
 from agent.state.controller.base_state_controller import BaseStateController
 from agent.state.entity.state_entity import BaseStateEntity
-from agent.parser.mutation_intent import MutationIntent
+from agent.parser.state_diff import StateDiff
 from openai import OpenAI
 
 
@@ -34,7 +34,7 @@ class LlmChatOutputsController(BaseOutputsController):
     def get_state_controller(self):
         return self.state_controller
 
-    def generate_outputs(self, intents: list[MutationIntent]) -> list[ChatOutput]:
+    def generate_outputs(self, state_diffs: list[StateDiff]) -> list[ChatOutput]:
         entities: list[BaseStateEntity] = self.get_state_controller().storage.get_all()
 
         incomplete_entities = [
@@ -45,25 +45,25 @@ class LlmChatOutputsController(BaseOutputsController):
         if not incomplete_entities:
             return []
 
-        intents_by_class: dict[type, MutationIntent] = {intent.entity_class: intent for intent in intents}
+        diffs_by_class: dict[type, StateDiff] = {diff.entity_class: diff for diff in state_diffs}
 
         outputs = []
         for entity in incomplete_entities:
-            intent: MutationIntent = intents_by_class.get(entity.__class__)
-            output = self.generate_output(entity, intent)
+            state_diff: StateDiff = diffs_by_class.get(entity.__class__)
+            output = self.generate_output(entity, state_diff)
             outputs.append(output)
 
         return outputs
 
-    def generate_output(self, entity: BaseStateEntity, intent: MutationIntent | None) -> ChatOutput:
+    def generate_output(self, entity: BaseStateEntity, state_diff: StateDiff | None) -> ChatOutput:
         entity_json = entity.content.model_dump_json(indent=2, exclude_none=True)
         entity_schema = json.dumps(entity.content.model_json_schema(), indent=2)
 
-        if intent:
-            intent_json = intent.model_dump_json(indent=2, exclude_none=True)
+        if state_diff:
+            diff_json = state_diff.model_dump_json(indent=2, exclude_none=True)
             change_context = f"""
         Last interaction resulted in the following change:
-        {intent_json}
+        {diff_json}
         """
         else:
             change_context = ""

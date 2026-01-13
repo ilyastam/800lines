@@ -4,7 +4,7 @@ from typing import Any
 from agent.interaction.interaction import Interaction
 
 from agent.parser.entity_context import EntityContext
-from agent.parser.mutation_intent import MutationIntent
+from agent.parser.state_diff import StateDiff
 from agent.state.entity.state_entity import BaseStateEntity
 
 
@@ -21,10 +21,10 @@ class BaseParser(ABC):
         self.channel_domains = channel_domains or [None]
 
     @abstractmethod
-    def parse_mutation_intent(
+    def parse_state_diff(
         self,
         input_text: str,
         entity_contexts: list[EntityContext],
         prior_interactions: list[Interaction] | None = None
-    ) -> list[MutationIntent]:
+    ) -> list[StateDiff]:
         pass

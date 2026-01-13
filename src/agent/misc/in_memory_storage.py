@@ -10,7 +10,7 @@ from agent.state.storage.base_state_storage import BaseStateStorage
 from agent.misc.embedding_service import EmbeddingService
 from agent.misc.similarity_metrics import cosine_similarity
 from agent.state.entity.state_entity import BaseStateEntity
-from agent.parser.mutation_intent import MutationIntent
+from agent.parser.state_diff import StateDiff
 from agent.state.entity.types import FieldDiff
 
 
@@ -92,55 +92,55 @@ class InMemoryStateStorage(BaseStateStorage):
         """
         return self.entity_versions.get(entity_id)
 
-    def apply_mutation_intents(self, intents: list[MutationIntent]) -> list[MutationIntent]:
+    def apply_state_diffs(self, state_diffs: list[StateDiff]) -> list[StateDiff]:
         """
-        Apply mutation intents to storage.
-        For InMemoryStateStorage, stores intents as dict-based entities.
+        Apply state diffs to storage.
+        For InMemoryStateStorage, stores diffs as dict-based entities.
 
         Args:
-            intents: List of mutation intents to apply
+            state_diffs: List of state diffs to apply
 
         Returns:
-            List of applied MutationIntent objects
+            List of applied StateDiff objects
         """
         version = self.increment_version()
-        applied_intents: list[MutationIntent] = []
+        applied_diffs: list[StateDiff] = []
 
-        for intent in intents:
-            update_dict = {diff.field_name: diff.new_value for diff in intent.diffs}
+        for state_diff in state_diffs:
+            update_dict = {diff.field_name: diff.new_value for diff in state_diff.diffs}
             entity = BaseStateEntity(content=update_dict)
             self._add_single(entity, version)
-            applied_intents.append(intent)
+            applied_diffs.append(state_diff)
 
-        return applied_intents
+        return applied_diffs
 
-    def add_entities(self, entities: list[BaseStateEntity]) -> list[MutationIntent]:
+    def add_entities(self, entities: list[BaseStateEntity]) -> list[StateDiff]:
         """
         Add multiple entities in a single state update.
-        Converts entities to intents internally.
+        Converts entities to state diffs internally.
 
         Args:
             entities: List of state entities to add
 
         Returns:
-            List of MutationIntent objects representing changes made
+            List of StateDiff objects representing changes made
         """
         version = self.increment_version()
 
-        intents: list[MutationIntent] = []
+        state_diffs: list[StateDiff] = []
 
         for entity in entities:
             content_dict = entity.content.model_dump(exclude_unset=True, exclude_defaults=True)
             diffs = [FieldDiff(field_name=k, new_value=v) for k, v in content_dict.items()]
-            intent = MutationIntent(
+            state_diff = StateDiff(
                 entity_class=type(entity),
                 diffs=diffs
             )
-            intents.append(intent)
+            state_diffs.append(state_diff)
 
             self._add_single(entity, version)
 
-        return intents
+        return state_diffs
 
     def _add_single(self, entity: BaseStateEntity, version: int) -> str:
         """

@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 from agent.state.entity.state_entity import BaseStateEntity
 
 if TYPE_CHECKING:
-    from agent.parser.mutation_intent import MutationIntent
+    from agent.parser.state_diff import StateDiff
 
 
 class BaseStateStorage(ABC):
@@ -20,15 +20,15 @@ class BaseStateStorage(ABC):
         return None
 
     @abstractmethod
-    def apply_mutation_intents(self, intents: list[MutationIntent]) -> list[MutationIntent]:
+    def apply_state_diffs(self, state_diffs: list[StateDiff]) -> list[StateDiff]:
         """
-        Apply mutation intents to storage.
+        Apply state diffs to storage.
 
         Args:
-            intents: List of mutation intents to apply
+            state_diffs: List of state diffs to apply
 
         Returns:
-            List of applied MutationIntent objects
+            List of applied StateDiff objects
         """
         pass
 

@@ -4,7 +4,7 @@ from agent.interaction.channel.channel import BaseChannel
 from agent.interaction.interaction import Interaction
 from agent.parser import BaseParser, get_parser_for_entity
 from agent.parser.entity_context import EntityContext
-from agent.parser.mutation_intent import MutationIntent
+from agent.parser.state_diff import StateDiff
 from agent.state.entity.state_entity import BaseStateEntity
 from agent.state import BaseStateStorage
 from agent.state.entity.types import FieldDiff
@@ -32,8 +32,8 @@ class BaseStateController:
         entities = self.storage.get_all()
         return bool(entities) and all(entity.is_completed() for entity in entities)
 
-    def parse_mutation_intents(self, inputs: list[BaseInput]) -> list[MutationIntent]:
-        all_intents: list[MutationIntent] = []
+    def parse_state_diffs(self, inputs: list[BaseInput]) -> list[StateDiff]:
+        all_diffs: list[StateDiff] = []
 
         for _input in inputs:
             if not _input.input_value:
@@ -57,16 +57,16 @@ class BaseStateController:
                         entity_refs=self.storage.get_entity_refs_for_class(cls)
                     ) for cls in classes
                 ]
-                intents = parser.parse_mutation_intent(
+                diffs = parser.parse_state_diff(
                     _input.input_value,
                     entity_contexts,
                     prior_interactions=self.get_interactions()
                 )
-                for intent in intents:
-                    intent.actor = _input.actor
-                all_intents.extend(intents)
+                for diff in diffs:
+                    diff.actor = _input.actor
+                all_diffs.extend(diffs)
 
-        return all_intents
+        return all_diffs
 
     def record_input(self, input_obj: BaseInput):
         self.interactions.append(input_obj)
@@ -83,19 +83,19 @@ class BaseStateController:
         return get_parser_for_entity(entity_cls, channel.channel_domain)
 
     @staticmethod
-    def _entities_to_intents(entities: list[BaseStateEntity]) -> list[MutationIntent]:
-        intents: list[MutationIntent] = []
+    def _entities_to_diffs(entities: list[BaseStateEntity]) -> list[StateDiff]:
+        state_diffs: list[StateDiff] = []
         for entity in entities:
             content_dict = entity.content.model_dump(exclude_unset=True, exclude_defaults=True)
             diffs = [FieldDiff(field_name=k, new_value=v) for k, v in content_dict.items()]
-            intent = MutationIntent(
+            state_diff = StateDiff(
                 entity_class=type(entity),
                 diffs=diffs
             )
-            intents.append(intent)
-        return intents
+            state_diffs.append(state_diff)
+        return state_diffs
 
-    def update_state(self, inputs: list[BaseInput]) -> list[MutationIntent]:
+    def update_state(self, inputs: list[BaseInput]) -> list[StateDiff]:
         """
         Compute and store state from input.
 
@@ -103,7 +103,7 @@ class BaseStateController:
             inputs: inputs to process
 
         Returns:
-            List of MutationIntent objects representing changes made
+            List of StateDiff objects representing changes made
         """
-        all_intents: list[MutationIntent] = self.parse_mutation_intents(inputs)
-        return self.storage.apply_mutation_intents(all_intents)
+        all_diffs: list[StateDiff] = self.parse_state_diffs(inputs)
+        return self.storage.apply_state_diffs(all_diffs)

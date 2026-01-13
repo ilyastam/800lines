@@ -10,7 +10,7 @@ from agent.state.entity.actor.base_actor import BaseActor
 from agent.state.entity.types import FieldDiff
 
 if TYPE_CHECKING:
-    from agent.parser.mutation_intent import MutationIntent
+    from agent.parser.state_diff import StateDiff
 
 ContentType = TypeVar("ContentType")
 
@@ -56,29 +56,29 @@ class BaseStateEntity(BaseModel, Generic[ContentType]):
 
     @classmethod
     def merge(cls, current: 'BaseStateEntity' | None,
-              intent: MutationIntent,
-              on_validation_error: ValidationErrorHandlingMode = ValidationErrorHandlingMode.skip_merge) -> tuple['BaseStateEntity', MutationIntent]:
-        validation_errors = current.validate_before_merge(intent) if current else []
+              state_diff: StateDiff,
+              on_validation_error: ValidationErrorHandlingMode = ValidationErrorHandlingMode.skip_merge) -> tuple['BaseStateEntity', StateDiff]:
+        validation_errors = current.validate_before_merge(state_diff) if current else []
 
         if validation_errors:
-            intent_with_errors = intent.model_copy(update={"validation_errors": validation_errors})
+            diff_with_errors = state_diff.model_copy(update={"validation_errors": validation_errors})
             match on_validation_error:
                 case ValidationErrorHandlingMode.raise_exception:
-                    raise EntityMergeValidationError(f"Can't merge entity {current} with intent {intent} due to validation errors: {validation_errors}")
+                    raise EntityMergeValidationError(f"Can't merge entity {current} with state_diff {state_diff} due to validation errors: {validation_errors}")
                 case ValidationErrorHandlingMode.skip_merge:
-                    return current, intent_with_errors.model_copy(update={"diffs": []})
+                    return current, diff_with_errors.model_copy(update={"diffs": []})
 
         if current:
-            current.update_content(intent.diffs)
-            current._add_actor(intent.actor)
-            return current, intent
+            current.update_content(state_diff.diffs)
+            current._add_actor(state_diff.actor)
+            return current, state_diff
 
-        update_dict = {diff.field_name: diff.new_value for diff in intent.diffs}
+        update_dict = {diff.field_name: diff.new_value for diff in state_diff.diffs}
         new_entity = cls(content=cls.model_fields['content'].annotation(**update_dict))
-        new_entity._add_actor(intent.actor)
-        return new_entity, intent
+        new_entity._add_actor(state_diff.actor)
+        return new_entity, state_diff
 
-    def validate_before_merge(self, intent: MutationIntent) -> list[str]:
+    def validate_before_merge(self, state_diff: StateDiff) -> list[str]:
         return []
 
     

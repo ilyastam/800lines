@@ -4,7 +4,7 @@ import unittest
 from agent.interaction.channel import TerminalChannel
 from agent.interaction.output.controller.llm_chat_outputs_controller import LlmChatOutputsController
 from agent.interaction.output.llm_output import ChatOutput
-from agent.parser.llm_parser import parse_mutation_intent_with_llm
+from agent.parser.llm_parser import parse_state_diff_with_llm
 from agent.parser.entity_context import EntityContext
 from agent.state.entity.actor.base_actor import BaseActor
 from agent.state.controller.base_state_controller import BaseStateController
@@ -66,37 +66,37 @@ class TestBoatBooking(unittest.TestCase):
 
         pass
 
-    def test_mutation_intents_set_fields(self):
+    def test_state_diffs_set_fields(self):
         message = "I want to book a 40ft catamaran"
 
         model_ctx = EntityContext(
             entity_class=BoatSpecEntity,
             entity_schema=BoatSpecEntity.model_json_schema(),
         )
-        intents = parse_mutation_intent_with_llm(
+        state_diffs = parse_state_diff_with_llm(
             input_text=message,
             entity_contexts=[model_ctx],
         )
 
-        all_diffs = [d for intent in intents for d in intent.diffs]
+        all_diffs = [d for state_diff in state_diffs for d in state_diff.diffs]
         diffs_by_field = {d.field_name: d.new_value for d in all_diffs}
         self.assertEqual(diffs_by_field.get('boat_length_ft'), 40)
         self.assertEqual(diffs_by_field.get('boat_type'), 'catamaran')
 
-    def test_mutation_intents_unset_fields(self):
+    def test_state_diffs_unset_fields(self):
         message = "Actually no, I've changed my mind about 40ft"
 
         model_ctx = EntityContext(
             entity_class=BoatSpecEntity,
             entity_schema=BoatSpecEntity.model_json_schema(),
         )
-        intents = parse_mutation_intent_with_llm(
+        state_diffs = parse_state_diff_with_llm(
             input_text=message,
             entity_contexts=[model_ctx],
             context=[{'role': 'user', 'content': 'I want to book a 40ft catamaran'}]
         )
 
-        all_diffs = [d for intent in intents for d in intent.diffs]
+        all_diffs = [d for state_diff in state_diffs for d in state_diff.diffs]
         diffs_by_field = {d.field_name: d.new_value for d in all_diffs}
         self.assertIsNone(diffs_by_field.get('boat_length_ft'))
 

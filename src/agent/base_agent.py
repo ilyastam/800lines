@@ -3,7 +3,7 @@ from agent.interaction.output.base_output import BaseOutput
 from agent.interaction.channel.channel import BaseChannel
 from agent.interaction.output.controller.base_outputs_controller import BaseOutputsController
 from agent.state.controller.base_state_controller import BaseStateController
-from agent.parser.mutation_intent import MutationIntent
+from agent.parser.state_diff import StateDiff
 
 
 class BaseAgent:
@@ -20,7 +20,7 @@ class BaseAgent:
             self.state_controller.record_input(input_obj)
             filtered_inputs.append(input_obj)
 
-        changes: list[MutationIntent] = self.state_controller.update_state(filtered_inputs)
+        changes: list[StateDiff] = self.state_controller.update_state(filtered_inputs)
 
         outputs: list[BaseOutput] = []
         for output_controller in self.output_controllers:

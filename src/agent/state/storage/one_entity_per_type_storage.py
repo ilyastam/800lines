@@ -3,7 +3,7 @@ import json
 
 from agent.state.entity.state_entity import BaseStateEntity
 from agent.state import BaseStateStorage
-from agent.parser.mutation_intent import MutationIntent
+from agent.parser.state_diff import StateDiff
 
 
 def _get_qualified_name(cls: type) -> str:
@@ -22,24 +22,24 @@ class OneEntityPerTypeStorage(BaseStateStorage):
                 raise ValueError(f"{entity_class} collides with {self._entity_class_name_to_type[entity_class.__name__]}")
             self._entity_class_name_to_type[entity_class.__name__] = entity_class
 
-    def apply_mutation_intents(self, intents: list[MutationIntent]) -> list[MutationIntent]:
-        applied_intents: list[MutationIntent] = []
+    def apply_state_diffs(self, state_diffs: list[StateDiff]) -> list[StateDiff]:
+        applied_diffs: list[StateDiff] = []
 
-        for intent in intents:
-            applied_intent: MutationIntent | None = None
-            entity_class: type[BaseStateEntity] = intent.entity_class
+        for state_diff in state_diffs:
+            applied_diff: StateDiff | None = None
+            entity_class: type[BaseStateEntity] = state_diff.entity_class
             if not entity_class:
                 continue
-            self.store[entity_class], applied_intent = entity_class.merge(
+            self.store[entity_class], applied_diff = entity_class.merge(
                 self.store.get(entity_class),
-                intent
+                state_diff
             )
 
-            if applied_intent and applied_intent.diffs:
-                applied_intents.append(applied_intent)
+            if applied_diff and applied_diff.diffs:
+                applied_diffs.append(applied_diff)
                 self.increment_version()
 
-        return applied_intents
+        return applied_diffs
 
     def get_all(self, chronological: bool = True) -> list[BaseStateEntity]:
         return [

@@ -12,7 +12,7 @@ from agent.base_agent import BaseAgent
 from agent.interaction.channel import TerminalChannel
 from agent.interaction.output.controller.llm_chat_outputs_controller import LlmChatOutputsController
 from agent.state.controller.base_state_controller import BaseStateController
-from agent.parser.mutation_intent import MutationIntent
+from agent.parser.state_diff import StateDiff
 from agent.state.storage.one_entity_per_type_storage import OneEntityPerTypeStorage
 from examples.boat_booking.input import BoatBookingInput
 from examples.boat_booking.state_entity import DesiredLocationEntity, BoatSpecEntity, DatesAndDurationEntity
@@ -142,21 +142,21 @@ class BoatBookingTUI(App):
         chat_pane.mount(message_widget)
         chat_pane.scroll_end(animate=False)
 
-    def log_state_changes(self, changes: list[MutationIntent]) -> None:
+    def log_state_changes(self, changes: list[StateDiff]) -> None:
         logs_pane = self.query_one("#logs-pane", RichLog)
 
         if not changes:
             logs_pane.write("[dim]No state changes[/dim]")
             return
 
-        for intent in changes:
+        for state_diff in changes:
             logs_pane.write(
-                f"[bold yellow]State Change: {intent.entity_class.__name__}[/bold yellow]"
+                f"[bold yellow]State Change: {state_diff.entity_class.__name__}[/bold yellow]"
             )
-            for diff in intent.diffs:
+            for diff in state_diff.diffs:
                 logs_pane.write(f"  [green]{diff.field_name}[/green] = {diff.new_value}")
-            if intent.validation_errors:
-                for err in intent.validation_errors:
+            if state_diff.validation_errors:
+                for err in state_diff.validation_errors:
                     logs_pane.write(f"  [red]Error: {err}[/red]")
 
     def log_llm_prompt(self, prompt: str) -> None:

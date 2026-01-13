@@ -8,7 +8,7 @@ from agent.parser.base_parser import BaseParser
 from agent.state.entity.actor.default_actor import DefaultActor
 from agent.state.entity.llm_parsed_entity import LlmParsedStateEntity
 from agent.parser.entity_context import EntityContext
-from agent.parser.mutation_intent import MutationIntent, LlmMutationIntents
+from agent.parser.state_diff import StateDiff, LlmStateDiffs
 
 
 class LlmParser(BaseParser):
@@ -24,12 +24,12 @@ class LlmParser(BaseParser):
         )
         self.client: OpenAI = client or OpenAI()
 
-    def parse_mutation_intent(
+    def parse_state_diff(
         self,
         input_text: str,
         entity_contexts: list[EntityContext],
         prior_interactions: list[Interaction | Any] | None = None
-    ) -> list[MutationIntent]:
+    ) -> list[StateDiff]:
         combined_entity_ctx = "\n".join([mctx.model_dump_json() for mctx in entity_contexts])
         _prior_messages: list[dict[str, str]] = self._prepare_prior_messages(prior_interactions)
 
@@ -42,21 +42,21 @@ class LlmParser(BaseParser):
         completion = self.client.chat.completions.parse(
             model="gpt-4o",
             messages=messages,
-            response_format=LlmMutationIntents,
+            response_format=LlmStateDiffs,
             temperature=0.0
         )
 
-        llm_response: LlmMutationIntents = completion.choices[0].message.parsed
+        llm_response: LlmStateDiffs = completion.choices[0].message.parsed
         entity_class_map = {ctx.entity_class.__name__: ctx.entity_class for ctx in entity_contexts}
 
         return [
-            MutationIntent(
-                entity_class=entity_class_map[llm_intent.entity_class_name],
-                entity_ref=llm_intent.entity_ref,
-                diffs=llm_intent.diffs,
+            StateDiff(
+                entity_class=entity_class_map[llm_diff.entity_class_name],
+                entity_ref=llm_diff.entity_ref,
+                diffs=llm_diff.diffs,
             )
-            for llm_intent in llm_response.intents
-            if llm_intent.entity_class_name in entity_class_map
+            for llm_diff in llm_response.diffs
+            if llm_diff.entity_class_name in entity_class_map
         ]
 
     @staticmethod
@@ -99,11 +99,11 @@ class LlmParser(BaseParser):
         return _intent_context
 
 
-def parse_mutation_intent_with_llm(input_text: str,
-                                   entity_contexts: list[EntityContext],
-                                   context: list[dict[str, str]] | None = None,
-                                   client: OpenAI | None = None
-                                   ) -> list[MutationIntent]:
+def parse_state_diff_with_llm(input_text: str,
+                              entity_contexts: list[EntityContext],
+                              context: list[dict[str, str]] | None = None,
+                              client: OpenAI | None = None
+                              ) -> list[StateDiff]:
 
     combined_entity_ctx = "\n".join([mctx.model_dump_json() for mctx in entity_contexts])
 
@@ -118,21 +118,21 @@ def parse_mutation_intent_with_llm(input_text: str,
     completion = llm_client.chat.completions.parse(
         model="gpt-4o",
         messages=messages,
-        response_format=LlmMutationIntents,
+        response_format=LlmStateDiffs,
         temperature=0.0
     )
 
-    llm_response: LlmMutationIntents = completion.choices[0].message.parsed
+    llm_response: LlmStateDiffs = completion.choices[0].message.parsed
     entity_class_map = {ctx.entity_class.__name__: ctx.entity_class for ctx in entity_contexts}
 
     return [
-        MutationIntent(
-            entity_class=entity_class_map[llm_intent.entity_class_name],
-            entity_ref=llm_intent.entity_ref,
-            diffs=llm_intent.diffs,
+        StateDiff(
+            entity_class=entity_class_map[llm_diff.entity_class_name],
+            entity_ref=llm_diff.entity_ref,
+            diffs=llm_diff.diffs,
         )
-        for llm_intent in llm_response.intents
-        if llm_intent.entity_class_name in entity_class_map
+        for llm_diff in llm_response.diffs
+        if llm_diff.entity_class_name in entity_class_map
     ]
 
 
