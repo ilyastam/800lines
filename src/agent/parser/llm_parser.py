@@ -6,7 +6,7 @@ from pydantic import BaseModel
 from agent.interaction.interaction import Interaction
 from agent.parser.base_parser import BaseParser
 from agent.state.entity.actor.default_actor import DefaultActor
-from agent.state.entity.llm_parsed_entity import LlmParsedStateEntity
+from agent.state.entity.state_entity import BaseStateEntity
 from agent.parser.entity_context import EntityContext
 from agent.parser.state_diff import StateDiff, LlmStateDiffs
 
@@ -15,11 +15,11 @@ class LlmParser(BaseParser):
     def __init__(
         self,
         client: OpenAI | None = None,
-        entity_classes: list[type[LlmParsedStateEntity]] | None = None,
+        entity_classes: list[type[BaseStateEntity]] | None = None,
         channel_domains: list[str | None] | None = None,
     ):
         super().__init__(
-            entity_classes=entity_classes or [LlmParsedStateEntity],
+            entity_classes=entity_classes or [BaseStateEntity],
             channel_domains=channel_domains or [None],
         )
         self.client: OpenAI = client or OpenAI()

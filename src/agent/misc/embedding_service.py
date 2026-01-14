@@ -139,7 +139,7 @@ class DefaultEmbeddingService(EmbeddingService):
         """
         parts = [
             f"Type: {entity.__class__.__name__}",
-            f"Content: {entity.content}",
+            f"Content: {entity.domain_dump()}",
         ]
 
         # Include type-specific fields

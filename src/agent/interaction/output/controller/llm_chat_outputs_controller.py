@@ -58,8 +58,8 @@ class LlmChatOutputsController(BaseOutputsController):
         return outputs
 
     def generate_output(self, entity: BaseStateEntity, state_diff: StateDiff | None) -> ChatOutput:
-        entity_json = entity.content.model_dump_json(indent=2, exclude_none=True)
-        entity_schema = json.dumps(entity.content.model_json_schema(), indent=2)
+        entity_json = entity.domain_dump_json(indent=2, exclude_none=True)
+        entity_schema = json.dumps(entity.domain_json_schema(), indent=2)
 
         if state_diff:
             diff_json = state_diff.model_dump_json(indent=2, exclude_none=True)

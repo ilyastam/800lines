@@ -108,7 +108,7 @@ class InMemoryStateStorage(BaseStateStorage):
 
         for state_diff in state_diffs:
             update_dict = {diff.field_name: diff.new_value for diff in state_diff.diffs}
-            entity = BaseStateEntity(content=update_dict)
+            entity = state_diff.entity_class(**update_dict)
             self._add_single(entity, version)
             applied_diffs.append(state_diff)
 
@@ -130,7 +130,7 @@ class InMemoryStateStorage(BaseStateStorage):
         state_diffs: list[StateDiff] = []
 
         for entity in entities:
-            content_dict = entity.content.model_dump(exclude_unset=True, exclude_defaults=True)
+            content_dict = entity.domain_dump(exclude_unset=True, exclude_defaults=True)
             diffs = [FieldDiff(field_name=k, new_value=v) for k, v in content_dict.items()]
             state_diff = StateDiff(
                 entity_class=type(entity),
