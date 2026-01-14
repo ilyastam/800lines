@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from datetime import datetime, timezone
 from enum import Enum
 from types import UnionType
@@ -45,8 +46,20 @@ class BaseStateEntity(BaseModel):
         for field_name in self.model_fields:
             if field_name in self._metadata_fields:
                 continue
-            if self._is_nullable_field(field_name) and getattr(self, field_name) is None:
+            value = getattr(self, field_name)
+
+            if self._is_nullable_field(field_name) and value is None:
                 return False
+
+            if isinstance(value, BaseStateEntity):
+                if not value.is_completed():
+                    return False
+
+            elif isinstance(value, list):
+                for item in value:
+                    if isinstance(item, BaseStateEntity) and not item.is_completed():
+                        return False
+
         return True
 
     @classmethod
@@ -84,10 +97,48 @@ class BaseStateEntity(BaseModel):
         return schema
 
     def update_fields(self, diffs: list[FieldDiff]) -> 'BaseStateEntity':
-        update_dict = {diff.field_name: diff.new_value for diff in diffs}
-        for key, value in update_dict.items():
-            setattr(self, key, value)
+        for diff in diffs:
+            self._set_nested_field(diff.field_name, diff.new_value)
         return self
+
+    def _set_nested_field(self, path: str, value: Any) -> None:
+        parts = path.split('.')
+        obj = self
+
+        for part in parts[:-1]:
+            if '[' in part:
+                field_name, idx = self._parse_list_access(part)
+                obj = getattr(obj, field_name)[idx]
+            else:
+                nested = getattr(obj, part)
+                if nested is None:
+                    field_info = obj.model_fields[part]
+                    nested_type = self._get_base_type(field_info.annotation)
+                    nested = nested_type()
+                    setattr(obj, part, nested)
+                obj = nested
+
+        final_field = parts[-1]
+        if '[' in final_field:
+            field_name, idx = self._parse_list_access(final_field)
+            getattr(obj, field_name)[idx] = value
+        else:
+            setattr(obj, final_field, value)
+
+    @staticmethod
+    def _parse_list_access(part: str) -> tuple[str, int]:
+        match = re.match(r'(\w+)\[(\d+)\]', part)
+        if not match:
+            raise ValueError(f"Invalid list access syntax: {part}")
+        return match.group(1), int(match.group(2))
+
+    @classmethod
+    def _get_base_type(cls, annotation: Any) -> type:
+        origin = get_origin(annotation)
+        if origin is Union or origin is UnionType:
+            args = [a for a in get_args(annotation) if a is not type(None)]
+            return args[0] if args else annotation
+        return annotation
 
     def _add_actor(self, actor: BaseActor | None) -> None:
         if actor is None:
@@ -120,8 +171,8 @@ class BaseStateEntity(BaseModel):
             current._add_actor(state_diff.actor)
             return current, state_diff
 
-        update_dict = {diff.field_name: diff.new_value for diff in state_diff.diffs}
-        new_entity = cls(**update_dict)
+        new_entity = cls()
+        new_entity.update_fields(state_diff.diffs)
         new_entity._add_actor(state_diff.actor)
         return new_entity, state_diff
 
