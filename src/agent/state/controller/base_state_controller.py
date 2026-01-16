@@ -86,7 +86,7 @@ class BaseStateController:
     def _entities_to_diffs(entities: list[BaseStateEntity]) -> list[StateDiff]:
         state_diffs: list[StateDiff] = []
         for entity in entities:
-            content_dict = entity.content.model_dump(exclude_unset=True, exclude_defaults=True)
+            content_dict = entity.domain_dump(exclude_unset=True, exclude_defaults=True)
             diffs = [FieldDiff(field_name=k, new_value=v) for k, v in content_dict.items()]
             state_diff = StateDiff(
                 entity_class=type(entity),

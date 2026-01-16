@@ -1,8 +1,8 @@
 from pydantic import Field
-from agent.state.entity.llm_parsed_entity import LlmParsedStateEntity
+from agent.state.entity.state_entity import BaseStateEntity
 
 
-class Task(LlmParsedStateEntity[str]):
+class Task(BaseStateEntity):
     """
         Describes an action that needs to be executed in the future based on the context.
         Examples: 
@@ -18,7 +18,7 @@ class Task(LlmParsedStateEntity[str]):
                                  description="One or more individual assigned to the task, captured in task_summary.")
 
 
-class Decision(LlmParsedStateEntity[str]): 
+class Decision(BaseStateEntity): 
     """
         Describes a decision that participants of the conversation reached.
 

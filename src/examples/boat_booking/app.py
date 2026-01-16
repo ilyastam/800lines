@@ -52,7 +52,7 @@ if __name__ == '__main__':
         bb_input = BoatBookingInput(input_value=message, actor=customer)
 
     for entity in state_controller.storage.get_all():
-        print(f"{type(entity).__name__}: {entity.content.model_dump()}")
+        print(f"{type(entity).__name__}: {entity.domain_dump()}")
         print(f"  Actors: {[actor.model_dump() for actor in entity.actors]}")
 
 
