@@ -19,6 +19,17 @@ class LlmStateDiffs(BaseModel):
     diffs: list[LlmStateDiff] = Field(default_factory=list, description="All state diffs expressed by user in their last interaction")
 
 
+class LlmTask(BaseModel):
+    """LLM-parseable task representation."""
+    task: str = Field(description="Description of task user wants agent to perform")
+
+
+class LlmParseResult(BaseModel):
+    """LLM response format that captures both state diffs and tasks."""
+    diffs: list[LlmStateDiff] = Field(default_factory=list, description="All state diffs expressed by user in their last interaction")
+    tasks: list[LlmTask] = Field(default_factory=list, description="All tasks expressed by user in their last interaction")
+
+
 class StateDiff(BaseModel):
     entity_class: type[BaseStateEntity] = Field(description="Entity class that user intends to mutate.")
     entity_ref: str | None = Field(default=None, description="Reference to the specific entity that user intends to mutate. Can be None.")

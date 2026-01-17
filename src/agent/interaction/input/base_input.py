@@ -15,7 +15,7 @@ class BaseInput(Interaction):
             raise TypeError(f"{cls.__name__} must define a class-level 'extracts_to'")
 
         extracts_to_value = cls.__dict__["extracts_to"]
-        if not isinstance(extracts_to_value, set) or not extracts_to_value:
+        if not isinstance(extracts_to_value, set):
             raise TypeError(
-                f"{cls.__name__}.extracts_to must be a non-empty set of BaseStateEntity subclasses"
+                f"{cls.__name__}.extracts_to must be a set of BaseStateEntity subclasses (can be empty for task-only inputs)"
             )

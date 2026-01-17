@@ -1,6 +1,7 @@
 from agent.parser.base_parser import BaseParser
 from agent.parser.entity_context import EntityContext
-from agent.parser.state_diff import StateDiff, LlmStateDiff, LlmStateDiffs
+from agent.parser.state_diff import StateDiff, LlmStateDiff, LlmStateDiffs, LlmTask, LlmParseResult
+from agent.parser.parse_result import ParseResult
 from agent.parser.parser_registry import (
     ParserRegistry,
     get_default_registry,
@@ -9,7 +10,6 @@ from agent.parser.parser_registry import (
 )
 from agent.parser.llm_parser import (
     LlmParser,
-    parse_state_diff_with_llm,
     register_llm_parser,
 )
 
@@ -21,11 +21,13 @@ __all__ = [
     "StateDiff",
     "LlmStateDiff",
     "LlmStateDiffs",
+    "LlmTask",
+    "LlmParseResult",
+    "ParseResult",
     "ParserRegistry",
     "get_default_registry",
     "register_parser",
     "get_parser_for_entity",
     "LlmParser",
-    "parse_state_diff_with_llm",
     "register_llm_parser",
 ]

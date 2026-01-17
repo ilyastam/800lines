@@ -1,27 +1,39 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 from agent.interaction.input.base_input import BaseInput
 from agent.interaction.output.base_output import BaseOutput
 from agent.interaction.channel.channel import BaseChannel
 from agent.interaction.interaction import Interaction
 from agent.parser import BaseParser, get_parser_for_entity
 from agent.parser.entity_context import EntityContext
+from agent.parser.parse_result import ParseResult
 from agent.parser.state_diff import StateDiff
 from agent.state.entity.state_entity import BaseStateEntity
 from agent.state import BaseStateStorage
 from agent.state.entity.types import FieldDiff
+from agent.task.base_task import BaseTask
+
+if TYPE_CHECKING:
+    from agent.task.task_parser import TaskParser
 
 
 class BaseStateController:
     def __init__(
         self,
         storage: BaseStateStorage | None = None,
+        task_parser: TaskParser | None = None,
     ):
         """
         Initialize the state controller.
 
         Args:
             storage: Storage backend to use
+            task_parser: Parser for task-only inputs (inputs with empty extracts_to)
         """
         self.storage = storage
+        self.task_parser = task_parser
         self.interactions: list[Interaction] = []
 
     def is_state_completable(self):
@@ -32,14 +44,22 @@ class BaseStateController:
         entities = self.storage.get_all()
         return bool(entities) and all(entity.is_completed() for entity in entities)
 
-    def parse_state_diffs(self, inputs: list[BaseInput]) -> list[StateDiff]:
+    def parse_inputs(self, inputs: list[BaseInput]) -> ParseResult:
         all_diffs: list[StateDiff] = []
+        all_tasks: list[BaseTask] = []
 
         for _input in inputs:
             if not _input.input_value:
                 continue
 
             state_entity_classes = list(_input.extracts_to)
+
+            if not state_entity_classes:
+                if self.task_parser:
+                    tasks = self.task_parser.parse_tasks(_input.input_value)
+                    all_tasks.extend(tasks)
+                continue
+
             classes_by_parser: dict[BaseParser, list[type[BaseStateEntity]]] = {}
             for cls in state_entity_classes:
                 parser = self._get_parser_for_entity_and_channel(cls, _input.channel)
@@ -57,16 +77,17 @@ class BaseStateController:
                         entity_refs=self.storage.get_entity_refs_for_class(cls)
                     ) for cls in classes
                 ]
-                diffs = parser.parse_state_diff(
+                parse_result = parser.parse_state_diff(
                     _input.input_value,
                     entity_contexts,
                     prior_interactions=self.get_interactions()
                 )
-                for diff in diffs:
+                for diff in parse_result.state_diffs:
                     diff.actor = _input.actor
-                all_diffs.extend(diffs)
+                all_diffs.extend(parse_result.state_diffs)
+                all_tasks.extend(parse_result.tasks)
 
-        return all_diffs
+        return ParseResult(state_diffs=all_diffs, tasks=all_tasks)
 
     def record_input(self, input_obj: BaseInput):
         self.interactions.append(input_obj)
@@ -95,7 +116,7 @@ class BaseStateController:
             state_diffs.append(state_diff)
         return state_diffs
 
-    def update_state(self, inputs: list[BaseInput]) -> list[StateDiff]:
+    def update_state(self, inputs: list[BaseInput]) -> tuple[list[StateDiff], list[BaseTask]]:
         """
         Compute and store state from input.
 
@@ -103,7 +124,9 @@ class BaseStateController:
             inputs: inputs to process
 
         Returns:
-            List of StateDiff objects representing changes made
+            Tuple of (applied StateDiffs, tasks parsed from input)
         """
-        all_diffs: list[StateDiff] = self.parse_state_diffs(inputs)
-        return self.storage.apply_state_diffs(all_diffs)
+        parse_result: ParseResult = self.parse_inputs(inputs)
+        applied_diffs = self.storage.apply_state_diffs(parse_result.state_diffs)
+        added_tasks = self.storage.add_tasks(parse_result.tasks)
+        return applied_diffs, added_tasks

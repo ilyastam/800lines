@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import json
 import shutil
 import textwrap
@@ -9,6 +11,7 @@ from agent.interaction.output.controller.base_outputs_controller import BaseOutp
 from agent.state.controller.base_state_controller import BaseStateController
 from agent.state.entity.state_entity import BaseStateEntity
 from agent.parser.state_diff import StateDiff
+from agent.task.base_task import BaseTask
 from openai import OpenAI
 
 
@@ -34,7 +37,12 @@ class LlmChatOutputsController(BaseOutputsController):
     def get_state_controller(self):
         return self.state_controller
 
-    def generate_outputs(self, state_diffs: list[StateDiff], max_outputs: int | None = 1) -> list[ChatOutput]:
+    def generate_outputs(
+        self,
+        state_diffs: list[StateDiff],
+        completed_tasks: list[BaseTask] | None = None,
+        max_outputs: int | None = 1
+    ) -> list[ChatOutput]:
         entities: list[BaseStateEntity] = self.get_state_controller().storage.get_all()
 
         incomplete_entities = [
@@ -50,14 +58,19 @@ class LlmChatOutputsController(BaseOutputsController):
         outputs = []
         for entity in incomplete_entities:
             state_diff: StateDiff = diffs_by_class.get(entity.__class__)
-            output = self.generate_output(entity, state_diff)
+            output = self.generate_output(entity, state_diff, completed_tasks)
             outputs.append(output)
             if max_outputs and len(outputs) >= max_outputs:
                 break
 
         return outputs
 
-    def generate_output(self, entity: BaseStateEntity, state_diff: StateDiff | None) -> ChatOutput:
+    def generate_output(
+        self,
+        entity: BaseStateEntity,
+        state_diff: StateDiff | None,
+        completed_tasks: list[BaseTask] | None = None
+    ) -> ChatOutput:
         entity_json = entity.domain_dump_json(indent=2, exclude_none=True)
         entity_schema = json.dumps(entity.domain_json_schema(), indent=2)
 
@@ -70,6 +83,19 @@ class LlmChatOutputsController(BaseOutputsController):
         else:
             change_context = ""
 
+        task_context = ""
+        if completed_tasks:
+            task_summaries = []
+            for task in completed_tasks:
+                task_summary = f"- Task: {task.task}\n  Status: {task.status.value}"
+                if task.result:
+                    task_summary += f"\n  Result: {task.result}"
+                task_summaries.append(task_summary)
+            task_context = f"""
+        The following tasks were executed this turn:
+        {chr(10).join(task_summaries)}
+        """
+
         prompt = textwrap.dedent(f"""
         Your task is to generate a message to the user such that their
         response would allow us to fill in as many unfilled fields as possible in the following entity:
@@ -78,9 +104,12 @@ class LlmChatOutputsController(BaseOutputsController):
         So far the following data has been collected:
         {entity_json}
         {change_context}
+        {task_context}
         you are chatting with the person, so strive for balance between casual and professional.
         Make the message sound natural, acknowledge what user said in their last message, maintain the thread, but
         advance the conversation to the objective of filling in all entities with expected valid data.
+
+        If tasks were executed, incorporate their results into your response naturally.
 
         Optimize for generating instructions that are first and foremost user-friendly.
         Be brief with thanks.

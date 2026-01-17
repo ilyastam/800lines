@@ -4,7 +4,7 @@ from typing import Any
 from agent.interaction.interaction import Interaction
 
 from agent.parser.entity_context import EntityContext
-from agent.parser.state_diff import StateDiff
+from agent.parser.parse_result import ParseResult
 from agent.state.entity.state_entity import BaseStateEntity
 
 
@@ -26,5 +26,5 @@ class BaseParser(ABC):
         input_text: str,
         entity_contexts: list[EntityContext],
         prior_interactions: list[Interaction] | None = None
-    ) -> list[StateDiff]:
+    ) -> ParseResult:
         pass

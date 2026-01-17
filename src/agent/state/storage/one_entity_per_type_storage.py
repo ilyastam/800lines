@@ -57,12 +57,15 @@ class OneEntityPerTypeStorage(BaseStateStorage):
             "entities": {
                 _get_qualified_name(entity_class): self.store.get(entity_class).model_dump(mode='json') if self.store.get(entity_class) else None
                 for entity_class in self._entity_class_name_to_type.values()
-            }
+            },
+            "tasks": [task.model_dump(mode='json') for task in self._tasks]
         }
         return json.dumps(data)
 
     @classmethod
     def from_json(cls, data: str) -> 'OneEntityPerTypeStorage':
+        from agent.task.base_task import BaseTask
+
         parsed = json.loads(data)
 
         entity_classes = []
@@ -81,6 +84,9 @@ class OneEntityPerTypeStorage(BaseStateStorage):
             entity_class = storage._entity_class_name_to_type.get(class_name)
             if entity_class:
                 storage.store[entity_class] = entity_class.model_validate(entity_data)
+
+        for task_data in parsed.get("tasks", []):
+            storage._tasks.append(BaseTask.model_validate(task_data))
 
         return storage
 

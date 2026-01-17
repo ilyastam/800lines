@@ -1,8 +1,15 @@
+from __future__ import annotations
+
 from abc import ABC, abstractmethod
+from typing import TYPE_CHECKING
+
 from agent.interaction.output.base_output import BaseOutput
 from agent.interaction.channel.channel import BaseChannel
 from agent.state.entity.state_entity import BaseStateEntity
 from agent.parser.state_diff import StateDiff
+
+if TYPE_CHECKING:
+    from agent.task.base_task import BaseTask
 
 
 class BaseOutputsController(ABC):
@@ -15,7 +22,12 @@ class BaseOutputsController(ABC):
         pass
 
     @abstractmethod
-    def generate_outputs(self, state_diffs: list[StateDiff], max_outputs: int | None = None) -> list[BaseOutput]:
+    def generate_outputs(
+        self,
+        state_diffs: list[StateDiff],
+        completed_tasks: list[BaseTask] | None = None,
+        max_outputs: int | None = None
+    ) -> list[BaseOutput]:
         pass
 
     @abstractmethod

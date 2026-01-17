@@ -5,10 +5,12 @@ from pydantic import BaseModel
 
 from agent.interaction.interaction import Interaction
 from agent.parser.base_parser import BaseParser
+from agent.parser.parse_result import ParseResult
 from agent.state.entity.actor.default_actor import DefaultActor
 from agent.state.entity.state_entity import BaseStateEntity
 from agent.parser.entity_context import EntityContext
-from agent.parser.state_diff import StateDiff, LlmStateDiffs
+from agent.parser.state_diff import StateDiff, LlmStateDiffs, LlmParseResult
+from agent.task.base_task import BaseTask
 
 
 class LlmParser(BaseParser):
@@ -29,12 +31,24 @@ class LlmParser(BaseParser):
         input_text: str,
         entity_contexts: list[EntityContext],
         prior_interactions: list[Interaction | Any] | None = None
-    ) -> list[StateDiff]:
+    ) -> ParseResult:
         combined_entity_ctx = "\n".join([mctx.model_dump_json() for mctx in entity_contexts])
         _prior_messages: list[dict[str, str]] = self._prepare_prior_messages(prior_interactions)
 
+        system_prompt = """Below is the description of data entities that user can modify (set or unset a field value).
+User may also say something unrelated to these entities.
+
+There are two types of user intent to capture:
+1. Entity updates (diffs): When user provides data/preferences to record 
+2. Tasks: When user wants the agent to DO something 
+
+If user intends to modify model entities, capture their intent as diffs.
+If user wants the agent to perform an action, capture it as a task.
+A single message can contain both entity updates AND tasks.
+If the intent is to unset a field - return default value for this field according to schema."""
+
         messages = _prior_messages + [
-            {"role": "system", "content": "Below is the description of data entities that user can modify (set or unset a field value). User may also say something unrelated to these entities. If user intends to modify model entities, capture and return their intent according to provided response schema. If the intent is to unset a field - return default value for this field according to schema."},
+            {"role": "system", "content": system_prompt},
             {"role": "system", "content": combined_entity_ctx},
             {"role": "user", "content": input_text},
         ]
@@ -42,14 +56,14 @@ class LlmParser(BaseParser):
         completion = self.client.chat.completions.parse(
             model="gpt-4o",
             messages=messages,
-            response_format=LlmStateDiffs,
+            response_format=LlmParseResult,
             temperature=0.0
         )
 
-        llm_response: LlmStateDiffs = completion.choices[0].message.parsed
+        llm_response: LlmParseResult = completion.choices[0].message.parsed
         entity_class_map = {ctx.entity_class.__name__: ctx.entity_class for ctx in entity_contexts}
 
-        return [
+        state_diffs = [
             StateDiff(
                 entity_class=entity_class_map[llm_diff.entity_class_name],
                 entity_ref=llm_diff.entity_ref,
@@ -58,6 +72,13 @@ class LlmParser(BaseParser):
             for llm_diff in llm_response.diffs
             if llm_diff.entity_class_name in entity_class_map
         ]
+
+        tasks = [
+            BaseTask(task=llm_task.task)
+            for llm_task in llm_response.tasks
+        ]
+
+        return ParseResult(state_diffs=state_diffs, tasks=tasks)
 
     @staticmethod
     def _prepare_prior_messages(intent_context: list[Interaction | Any] | None = None) -> list[dict[str, str]]:
@@ -99,41 +120,6 @@ class LlmParser(BaseParser):
         return _intent_context
 
 
-def parse_state_diff_with_llm(input_text: str,
-                              entity_contexts: list[EntityContext],
-                              context: list[dict[str, str]] | None = None,
-                              client: OpenAI | None = None
-                              ) -> list[StateDiff]:
-
-    combined_entity_ctx = "\n".join([mctx.model_dump_json() for mctx in entity_contexts])
-
-    messages = (context or []) + [
-        {"role": "system", "content": "Below is the description of data entities that user can modify (set or unset a field value). User may also say something unrelated to these entities. If user intends to modify model entities, capture and return their intent according to provided response schema. If the intent is to unset a field - return default value for this field according to schema."},
-        {"role": "system", "content": combined_entity_ctx},
-        {"role": "user", "content": input_text},
-    ]
-
-    llm_client = client or OpenAI()
-
-    completion = llm_client.chat.completions.parse(
-        model="gpt-4o",
-        messages=messages,
-        response_format=LlmStateDiffs,
-        temperature=0.0
-    )
-
-    llm_response: LlmStateDiffs = completion.choices[0].message.parsed
-    entity_class_map = {ctx.entity_class.__name__: ctx.entity_class for ctx in entity_contexts}
-
-    return [
-        StateDiff(
-            entity_class=entity_class_map[llm_diff.entity_class_name],
-            entity_ref=llm_diff.entity_ref,
-            diffs=llm_diff.diffs,
-        )
-        for llm_diff in llm_response.diffs
-        if llm_diff.entity_class_name in entity_class_map
-    ]
 
 
 def register_llm_parser(channel_domain: str | None = None) -> None:

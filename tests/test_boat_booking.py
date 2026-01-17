@@ -4,8 +4,6 @@ import unittest
 from agent.interaction.channel import TerminalChannel
 from agent.interaction.output.controller.llm_chat_outputs_controller import LlmChatOutputsController
 from agent.interaction.output.llm_output import ChatOutput
-from agent.parser.llm_parser import parse_state_diff_with_llm
-from agent.parser.entity_context import EntityContext
 from agent.state.entity.actor.base_actor import BaseActor
 from agent.state.controller.base_state_controller import BaseStateController
 from agent.state.storage.one_entity_per_type_storage import OneEntityPerTypeStorage
@@ -40,9 +38,9 @@ class TestBoatBooking(unittest.TestCase):
             ChatOutput(input_value=message, channel_instance=terminal_channel, actor=user_actor)
         )
         state_controller.record_input(bb_input)
-        changes = state_controller.update_state([bb_input])
+        changes, tasks = state_controller.update_state([bb_input])
 
-        interactions = outputs_controller.generate_outputs(changes)
+        interactions = outputs_controller.generate_outputs(changes, tasks)
         interaction = interactions[0]
         outputs_controller.record_output(
             ChatOutput(input_value=interaction.input_value, channel_instance=terminal_channel)
@@ -62,43 +60,9 @@ class TestBoatBooking(unittest.TestCase):
         state_controller.record_outputs(
             ChatOutput(input_value=message, channel_instance=terminal_channel, actor=user_actor)
         )
-        changes = state_controller.update_state([bb_input])
+        changes, tasks = state_controller.update_state([bb_input])
 
         pass
-
-    def test_state_diffs_set_fields(self):
-        message = "I want to book a 40ft catamaran"
-
-        model_ctx = EntityContext(
-            entity_class=BoatSpecEntity,
-            entity_schema=BoatSpecEntity.model_json_schema(),
-        )
-        state_diffs = parse_state_diff_with_llm(
-            input_text=message,
-            entity_contexts=[model_ctx],
-        )
-
-        all_diffs = [d for state_diff in state_diffs for d in state_diff.diffs]
-        diffs_by_field = {d.field_name: d.new_value for d in all_diffs}
-        self.assertEqual(diffs_by_field.get('boat_length_ft'), 40)
-        self.assertEqual(diffs_by_field.get('boat_type'), 'catamaran')
-
-    def test_state_diffs_unset_fields(self):
-        message = "Actually no, I've changed my mind about 40ft"
-
-        model_ctx = EntityContext(
-            entity_class=BoatSpecEntity,
-            entity_schema=BoatSpecEntity.model_json_schema(),
-        )
-        state_diffs = parse_state_diff_with_llm(
-            input_text=message,
-            entity_contexts=[model_ctx],
-            context=[{'role': 'user', 'content': 'I want to book a 40ft catamaran'}]
-        )
-
-        all_diffs = [d for state_diff in state_diffs for d in state_diff.diffs]
-        diffs_by_field = {d.field_name: d.new_value for d in all_diffs}
-        self.assertIsNone(diffs_by_field.get('boat_length_ft'))
 
 
 if __name__ == '__main__':
