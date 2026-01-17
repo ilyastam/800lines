@@ -87,7 +87,7 @@ class LlmChatOutputsController(BaseOutputsController):
         if completed_tasks:
             task_summaries = []
             for task in completed_tasks:
-                task_summary = f"- Task: {task.task}\n  Status: {task.status.value}"
+                task_summary = f"- Task: {task.task}"
                 if task.result:
                     task_summary += f"\n  Result: {task.result}"
                 task_summaries.append(task_summary)

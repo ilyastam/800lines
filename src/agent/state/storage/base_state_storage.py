@@ -9,7 +9,7 @@ from agent.state.entity.state_entity import BaseStateEntity
 
 if TYPE_CHECKING:
     from agent.parser.state_diff import StateDiff
-    from agent.task.base_task import BaseTask, TaskStatus
+    from agent.task.base_task import BaseTask
 
 
 class BaseStateStorage(ABC):
@@ -108,30 +108,19 @@ class BaseStateStorage(ABC):
         """Get all tasks added at a specific version."""
         return [task for task in self._tasks if task.version_added == version]
 
-    def get_pending_tasks(self) -> list[BaseTask]:
-        """Get all tasks that have not yet been completed or failed."""
-        from agent.task.base_task import TaskStatus
-
-        return [
-            task for task in self._tasks
-            if task.status in (TaskStatus.NOT_STARTED, TaskStatus.IN_PROGRESS)
-        ]
-
-    def update_task(self, task_id: str, status: TaskStatus, result: str | None = None) -> BaseTask | None:
+    def update_task(self, task_id: str, result: str | None = None) -> BaseTask | None:
         """
-        Update a task's status and optionally its result.
+        Update a task's result.
 
         Args:
             task_id: ID of the task to update
-            status: New status
-            result: Optional result to set
+            result: Result to set
 
         Returns:
             Updated task if found, None otherwise
         """
         for task in self._tasks:
             if task.task_id == task_id:
-                task.status = status
                 if result is not None:
                     task.result = result
                 return task
